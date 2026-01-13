@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import FilterBuilder from '../components/CRM/FilterBuilder';
 import { Filter, X, ChevronLeft, ChevronRight, GripVertical, ArrowUp, ArrowDown, Settings } from 'lucide-react';
@@ -12,6 +13,7 @@ const ALL_COLUMNS = [
 ];
 
 const ClientsPage = () => {
+    const navigate = useNavigate();
     const [clients, setClients] = useState([]);
     const [views, setViews] = useState([]);
     const [currentViewId, setCurrentViewId] = useState(null);
@@ -454,7 +456,12 @@ const ClientsPage = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {clients.length > 0 ? (
                             clients.map((client) => (
-                                <tr key={client.id} className="hover:bg-gray-50 transition-colors">
+                                <tr
+                                    key={client.id}
+                                    onDoubleClick={() => navigate(`/clients/${client.id}`)}
+                                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                    title="Double click to view details"
+                                >
                                     {columnOrder.map((column) => (
                                         <td key={column} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {column === 'name' ? (
