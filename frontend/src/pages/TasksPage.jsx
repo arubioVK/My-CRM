@@ -3,19 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import FilterBuilder from '../components/CRM/FilterBuilder';
 import ExportButton from '../components/CRM/ExportButton';
-import { Filter, X, ChevronLeft, ChevronRight, GripVertical, ArrowUp, ArrowDown, Settings } from 'lucide-react';
+import { Filter, X, ChevronLeft, ChevronRight, GripVertical, ArrowUp, ArrowDown, Settings, CheckSquare } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const ALL_COLUMNS = [
-    { id: 'name', label: 'Name' },
-    { id: 'email', label: 'Email' },
-    { id: 'phone', label: 'Phone' },
-    { id: 'address', label: 'Address' },
+    { id: 'title', label: 'Title' },
+    { id: 'status', label: 'Status' },
+    { id: 'priority', label: 'Priority' },
+    { id: 'due_date', label: 'Due Date' },
+    { id: 'client_name', label: 'Client' },
+    { id: 'assigned_to_name', label: 'Assigned To' },
 ];
 
-const ClientsPage = () => {
+const TasksPage = () => {
     const navigate = useNavigate();
-    const [clients, setClients] = useState([]);
+    const [tasks, setTasks] = useState([]);
     const [views, setViews] = useState([]);
     const [currentViewId, setCurrentViewId] = useState(null);
     const [showFilterBuilder, setShowFilterBuilder] = useState(false);
@@ -23,8 +25,8 @@ const ClientsPage = () => {
     const [editingView, setEditingView] = useState(null);
     const [renamingViewId, setRenamingViewId] = useState(null);
     const [renamingValue, setRenamingValue] = useState('');
-    const [columnOrder, setColumnOrder] = useState(['name', 'email', 'phone', 'address']);
-    const [sorting, setSorting] = useState({ field: 'name', direction: 'asc' });
+    const [columnOrder, setColumnOrder] = useState(['title', 'status', 'priority', 'due_date', 'client_name']);
+    const [sorting, setSorting] = useState({ field: 'due_date', direction: 'asc' });
     const [showColumnConfig, setShowColumnConfig] = useState(false);
     const lastRequestRef = React.useRef('');
     const viewsFetchedRef = React.useRef(false);
@@ -37,35 +39,34 @@ const ClientsPage = () => {
 
     useEffect(() => {
         const controller = new AbortController();
-        fetchClients(controller.signal);
+        fetchTasks(controller.signal);
         return () => controller.abort();
     }, [currentViewId, activeFilters, sorting]);
 
     const handleSelectView = (viewId, viewsList = views) => {
         const view = viewsList.find(v => v.id === viewId);
         if (view) {
-            setColumnOrder(view.column_order && view.column_order.length > 0 ? view.column_order : ['name', 'email', 'phone', 'address']);
-            setSorting(view.sorting && view.sorting.field ? view.sorting : { field: 'name', direction: 'asc' });
+            setColumnOrder(view.column_order && view.column_order.length > 0 ? view.column_order : ['title', 'status', 'priority', 'due_date', 'client_name']);
+            setSorting(view.sorting && view.sorting.field ? view.sorting : { field: 'due_date', direction: 'asc' });
             setCurrentViewId(viewId);
             setActiveFilters(null);
             setEditingView(null);
         } else {
-            setColumnOrder(['name', 'email', 'phone', 'address']);
-            setSorting({ field: 'name', direction: 'asc' });
+            setColumnOrder(['title', 'status', 'priority', 'due_date', 'client_name']);
+            setSorting({ field: 'due_date', direction: 'asc' });
             setCurrentViewId(viewId);
         }
     };
 
     const fetchViews = async () => {
         try {
-            const response = await api.get('/crm/saved-views/', { params: { view_type: 'client' } });
+            const response = await api.get('/crm/saved-views/', { params: { view_type: 'task' } });
             const viewsData = response.data;
             setViews(viewsData);
-            // Set default view to "All Clients" if available
             if (!currentViewId && viewsData.length > 0) {
-                const allClientsView = viewsData.find(v => v.name === 'All Clients');
-                if (allClientsView) {
-                    handleSelectView(allClientsView.id, viewsData);
+                const allTasksView = viewsData.find(v => v.name === 'All Tasks');
+                if (allTasksView) {
+                    handleSelectView(allTasksView.id, viewsData);
                 }
             }
         } catch (error) {
@@ -73,7 +74,7 @@ const ClientsPage = () => {
         }
     };
 
-    const fetchClients = async (signal) => {
+    const fetchTasks = async (signal) => {
         const params = {
             sort: JSON.stringify(sorting)
         };
@@ -89,26 +90,26 @@ const ClientsPage = () => {
         lastRequestRef.current = signature;
 
         try {
-            const response = await api.get('/crm/clients/', {
+            const response = await api.get('/crm/tasks/', {
                 params,
                 signal
             });
-            setClients(response.data);
+            setTasks(response.data);
         } catch (error) {
             if (error.name === 'CanceledError') return;
-            console.error('Error fetching clients:', error);
+            console.error('Error fetching tasks:', error);
         }
     };
 
     const handleApplyFilters = (filters) => {
         setActiveFilters(filters);
-        setCurrentViewId(null); // Clear active view when custom filters are applied
+        setCurrentViewId(null);
         setShowFilterBuilder(false);
     };
 
     const handleSaveView = async (name, filters, id = null) => {
         try {
-            const payload = { filters };
+            const payload = { filters, view_type: 'task' };
             if (name) payload.name = name;
 
             if (id) {
@@ -129,26 +130,8 @@ const ClientsPage = () => {
         }
     };
 
-    const handleMoveView = async (id, direction) => {
-        const index = views.findIndex(v => v.id === id);
-        if (index === -1) return;
-
-        const newViews = [...views];
-        const targetIndex = direction === 'left' ? index - 1 : index + 1;
-
-        if (targetIndex < 0 || targetIndex >= views.length) return;
-
-        // Swap
-        const temp = newViews[index];
-        newViews[index] = newViews[targetIndex];
-        newViews[targetIndex] = temp;
-
-        await updateViewPositions(newViews);
-    };
-
     const updateViewPositions = async (newViews) => {
         try {
-            // Update positions in backend
             await Promise.all(newViews.map((v, i) =>
                 api.patch(`/crm/saved-views/${v.id}/`, { position: i })
             ));
@@ -160,11 +143,9 @@ const ClientsPage = () => {
 
     const onDragEnd = (result) => {
         if (!result.destination) return;
-
         const items = Array.from(views);
         const [reorderedItem] = items.splice(result.source.index, 1);
         items.splice(result.destination.index, 0, reorderedItem);
-
         updateViewPositions(items);
     };
 
@@ -185,14 +166,10 @@ const ClientsPage = () => {
 
     const handleColumnReorder = async (result) => {
         if (!result.destination) return;
-
         const newColumnOrder = Array.from(columnOrder);
         const [reorderedColumn] = newColumnOrder.splice(result.source.index, 1);
         newColumnOrder.splice(result.destination.index, 0, reorderedColumn);
-
         setColumnOrder(newColumnOrder);
-
-        // Save to backend if a view is selected
         if (currentViewId) {
             try {
                 await api.patch(`/crm/saved-views/${currentViewId}/`, { column_order: newColumnOrder });
@@ -208,12 +185,9 @@ const ClientsPage = () => {
         if (columnOrder.includes(columnId)) {
             newColumnOrder = columnOrder.filter(id => id !== columnId);
         } else {
-            // Add to the end
             newColumnOrder = [...columnOrder, columnId];
         }
-
         setColumnOrder(newColumnOrder);
-
         if (currentViewId) {
             try {
                 await api.patch(`/crm/saved-views/${currentViewId}/`, { column_order: newColumnOrder });
@@ -228,8 +202,6 @@ const ClientsPage = () => {
         const newDirection = sorting.field === field && sorting.direction === 'asc' ? 'desc' : 'asc';
         const newSorting = { field, direction: newDirection };
         setSorting(newSorting);
-
-        // Save to backend if a view is selected
         if (currentViewId) {
             try {
                 await api.patch(`/crm/saved-views/${currentViewId}/`, { sorting: newSorting });
@@ -247,8 +219,8 @@ const ClientsPage = () => {
             await api.delete(`/crm/saved-views/${id}/`);
             setViews(views.filter(v => v.id !== id));
             if (currentViewId === id) {
-                const allClientsView = views.find(v => v.name === 'All Clients');
-                setCurrentViewId(allClientsView ? allClientsView.id : null);
+                const allTasksView = views.find(v => v.name === 'All Tasks');
+                setCurrentViewId(allTasksView ? allTasksView.id : null);
             }
         } catch (error) {
             alert(error.response?.data?.error || 'Error deleting view');
@@ -258,15 +230,14 @@ const ClientsPage = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Clients</h1>
-
+                <h1 className="text-2xl font-bold text-gray-800">Tareas</h1>
                 <div className="flex items-center space-x-3">
                     <ExportButton
-                        endpoint="/crm/clients/"
+                        endpoint="/crm/tasks/"
                         filters={activeFilters || views.find(v => v.id === currentViewId)?.filters}
                         sort={sorting}
                         columns={columnOrder}
-                        filename="clients_export"
+                        filename="tasks_export"
                     />
                     <button
                         onClick={() => setShowFilterBuilder(!showFilterBuilder)}
@@ -276,7 +247,7 @@ const ClientsPage = () => {
                             }`}
                     >
                         <Filter size={16} className="mr-2" />
-                        {activeFilters ? 'Filters Applied' : 'Filter'}
+                        {activeFilters ? 'Filtros Aplicados' : 'Filtrar'}
                     </button>
                     <button
                         onClick={() => setShowColumnConfig(!showColumnConfig)}
@@ -286,7 +257,7 @@ const ClientsPage = () => {
                             }`}
                     >
                         <Settings size={16} className="mr-2" />
-                        Columns
+                        Columnas
                     </button>
                 </div>
             </div>
@@ -365,7 +336,7 @@ const ClientsPage = () => {
 
             <div className="mb-6">
                 <p className="text-sm text-gray-500">
-                    Showing <span className="font-semibold text-gray-900">{clients.length}</span> clients
+                    Showing <span className="font-semibold text-gray-900">{tasks.length}</span> tasks
                 </p>
             </div>
 
@@ -381,24 +352,28 @@ const ClientsPage = () => {
                     initialView={editingView}
                     currentViewId={currentViewId}
                     isSystemView={views.find(v => v.id === currentViewId)?.is_system}
-                    fields={[...ALL_COLUMNS, { id: 'owner', label: 'Owner' }].map(c => ({ label: c.label, value: c.id }))}
-                    defaultField="name"
+                    fields={[
+                        { label: 'Title', value: 'title' },
+                        { label: 'Status', value: 'status' },
+                        { label: 'Priority', value: 'priority' },
+                        { label: 'Due Date', value: 'due_date' },
+                        { label: 'Assigned To', value: 'assigned_to' },
+                    ]}
+                    defaultField="title"
                 />
             )}
 
             {showColumnConfig && (
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 mb-6">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-800">Manage Columns</h3>
+                        <h3 className="text-lg font-semibold text-gray-800">Gestionar Columnas</h3>
                         <button onClick={() => setShowColumnConfig(false)} className="text-gray-400 hover:text-gray-600">
                             <X size={20} />
                         </button>
                     </div>
-
                     <div className="flex flex-col md:flex-row gap-6">
-                        {/* Left Panel: Visibility */}
                         <div className="flex-1 border-r border-gray-100 pr-6">
-                            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Available Columns</h4>
+                            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Columnas Disponibles</h4>
                             <div className="space-y-2">
                                 {ALL_COLUMNS.map(col => (
                                     <label key={col.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md cursor-pointer transition-colors">
@@ -413,10 +388,8 @@ const ClientsPage = () => {
                                 ))}
                             </div>
                         </div>
-
-                        {/* Right Panel: Reordering */}
                         <div className="flex-1">
-                            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Visible Order (Drag to reorder)</h4>
+                            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Orden Visible</h4>
                             <DragDropContext onDragEnd={handleColumnReorder}>
                                 <Droppable droppableId="column-config">
                                     {(provided) => (
@@ -440,9 +413,6 @@ const ClientsPage = () => {
                                                 );
                                             })}
                                             {provided.placeholder}
-                                            {columnOrder.length === 0 && (
-                                                <p className="text-sm text-gray-400 italic">No columns selected</p>
-                                            )}
                                         </div>
                                     )}
                                 </Droppable>
@@ -480,20 +450,45 @@ const ClientsPage = () => {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {clients.length > 0 ? (
-                            clients.map((client) => (
+                        {tasks.length > 0 ? (
+                            tasks.map((task) => (
                                 <tr
-                                    key={client.id}
-                                    onDoubleClick={() => navigate(`/clients/${client.id}`)}
+                                    key={task.id}
+                                    onClick={() => navigate(`/tasks/${task.id}`)}
                                     className="hover:bg-gray-50 transition-colors cursor-pointer"
-                                    title="Double click to view details"
                                 >
                                     {columnOrder.map((column) => (
                                         <td key={column} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {column === 'name' ? (
-                                                <span className="font-medium text-gray-900">{client.name}</span>
+                                            {column === 'title' ? (
+                                                <span className="font-medium text-gray-900">{task.title}</span>
+                                            ) : column === 'client_name' ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/clients/${task.client}`);
+                                                    }}
+                                                    className="text-indigo-600 hover:text-indigo-900 font-medium hover:underline text-left"
+                                                >
+                                                    {task.client_name}
+                                                </button>
+                                            ) : column === 'status' ? (
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.status === 'done' ? 'bg-green-100 text-green-800' :
+                                                    task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                    {task.status}
+                                                </span>
+                                            ) : column === 'priority' ? (
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                                    task.priority === 'medium' ? 'bg-amber-100 text-amber-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                    {task.priority}
+                                                </span>
+                                            ) : column === 'due_date' ? (
+                                                task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'
                                             ) : (
-                                                client[column]
+                                                task[column]
                                             )}
                                         </td>
                                     ))}
@@ -502,7 +497,7 @@ const ClientsPage = () => {
                         ) : (
                             <tr>
                                 <td colSpan={columnOrder.length} className="px-6 py-4 text-center text-sm text-gray-500">
-                                    No clients found matching these criteria.
+                                    No se encontraron tareas.
                                 </td>
                             </tr>
                         )}
@@ -513,4 +508,4 @@ const ClientsPage = () => {
     );
 };
 
-export default ClientsPage;
+export default TasksPage;

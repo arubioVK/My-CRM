@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ChevronLeft, ChevronRight, LayoutDashboard, Briefcase } from 'lucide-react';
+import { Users, ChevronLeft, ChevronRight, LayoutDashboard, Briefcase, CheckSquare } from 'lucide-react';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
     const [crmOpen, setCrmOpen] = useState(true);
@@ -36,7 +36,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                                 <li>
                                     <Link to="/clients" className="flex items-center py-2 px-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md">
                                         <Users size={18} />
-                                        {isOpen && <span className="ml-3">Clientes</span>}
+                                        {isOpen && <span className="ml-3">Clients</span>}
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link to="/tasks" className="flex items-center py-2 px-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md">
+                                        <CheckSquare size={18} />
+                                        {isOpen && <span className="ml-3">Tasks</span>}
                                     </Link>
                                 </li>
                             </ul>

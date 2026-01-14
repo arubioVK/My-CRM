@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Lock, Unlock, Save, X, ArrowLeft, User, Mail, Phone, MapPin } from 'lucide-react';
+import { Lock, Unlock, Save, X, ArrowLeft, User, Mail, Phone, MapPin, CheckSquare, Plus, ChevronRight } from 'lucide-react';
 
 const ClientDetailPage = () => {
     const { id } = useParams();
@@ -11,10 +11,27 @@ const ClientDetailPage = () => {
     const [isLocked, setIsLocked] = useState(true);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [tasks, setTasks] = useState([]);
+    const [loadingTasks, setLoadingTasks] = useState(true);
+    const lastFetchedIdRef = React.useRef(null);
 
     useEffect(() => {
+        if (lastFetchedIdRef.current === id) return;
+        lastFetchedIdRef.current = id;
         fetchClient();
+        fetchTasks();
     }, [id]);
+
+    const fetchTasks = async () => {
+        try {
+            const response = await api.get('/crm/tasks/', { params: { client_id: id } });
+            setTasks(response.data);
+            setLoadingTasks(false);
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+            setLoadingTasks(false);
+        }
+    };
 
     const fetchClient = async () => {
         try {
@@ -111,8 +128,8 @@ const ClientDetailPage = () => {
                             <button
                                 onClick={() => setIsLocked(!isLocked)}
                                 className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${isLocked
-                                        ? 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-                                        : 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                    ? 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                                    : 'bg-indigo-100 text-indigo-700 border border-indigo-200'
                                     }`}
                             >
                                 {isLocked ? (
@@ -134,8 +151,8 @@ const ClientDetailPage = () => {
                                         onChange={handleInputChange}
                                         disabled={isLocked}
                                         className={`w-full px-4 py-2 rounded-md border ${isLocked
-                                                ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-                                                : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+                                            ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                                            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
                                             } transition-all`}
                                     />
                                 </div>
@@ -149,8 +166,8 @@ const ClientDetailPage = () => {
                                         onChange={handleInputChange}
                                         disabled={isLocked}
                                         className={`w-full px-4 py-2 rounded-md border ${isLocked
-                                                ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-                                                : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+                                            ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                                            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
                                             } transition-all`}
                                     />
                                 </div>
@@ -164,8 +181,8 @@ const ClientDetailPage = () => {
                                         onChange={handleInputChange}
                                         disabled={isLocked}
                                         className={`w-full px-4 py-2 rounded-md border ${isLocked
-                                                ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-                                                : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+                                            ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                                            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
                                             } transition-all`}
                                     />
                                 </div>
@@ -179,8 +196,8 @@ const ClientDetailPage = () => {
                                         onChange={handleInputChange}
                                         disabled={isLocked}
                                         className={`w-full px-4 py-2 rounded-md border ${isLocked
-                                                ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-                                                : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+                                            ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                                            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
                                             } transition-all`}
                                     ></textarea>
                                 </div>
@@ -206,6 +223,72 @@ const ClientDetailPage = () => {
                                         )}
                                         Save Changes
                                     </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Tasks Section */}
+                    <div className="mt-8 bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                                <CheckSquare size={20} className="mr-2 text-indigo-600" />
+                                Related Tasks
+                            </h2>
+                            <button
+                                className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                                onClick={() => navigate('/tasks')}
+                            >
+                                <Plus size={16} className="mr-1" /> Add Task
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            {loadingTasks ? (
+                                <div className="flex justify-center py-4">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                                </div>
+                            ) : tasks.length > 0 ? (
+                                <div className="space-y-4">
+                                    {tasks.map(task => (
+                                        <div
+                                            key={task.id}
+                                            onClick={() => navigate(`/tasks/${task.id}`)}
+                                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors"
+                                        >
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-900">{task.title}</h4>
+                                                <div className="flex items-center mt-1 space-x-3">
+                                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${task.status === 'done' ? 'bg-green-100 text-green-800' :
+                                                        task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                        {task.status}
+                                                    </span>
+                                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                                        task.priority === 'medium' ? 'bg-amber-100 text-amber-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                        {task.priority}
+                                                    </span>
+                                                    {task.due_date && (
+                                                        <span className="text-xs text-gray-400">
+                                                            Due: {new Date(task.due_date).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => navigate('/tasks')}
+                                                className="text-gray-400 hover:text-indigo-600"
+                                            >
+                                                <ChevronRight size={18} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-6">
+                                    <p className="text-sm text-gray-500 italic">No tasks found for this client.</p>
                                 </div>
                             )}
                         </div>

@@ -30,9 +30,9 @@ def build_q_object(filters, user=None):
             # Prepare the Q object for this single condition
             current_cond_q = Q()
 
-            if field == 'owner':
+            if field in ['owner', 'assigned_to']:
                 if isinstance(value, list):
-                    # Handle multiple owners
+                    # Handle multiple users
                     resolved_values = []
                     for v in value:
                         if v == 'me' and user:

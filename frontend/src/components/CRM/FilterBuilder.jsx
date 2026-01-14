@@ -2,25 +2,27 @@ import React, { useState, useEffect } from 'react';
 import api from '../../api';
 import { Plus, Save, X, RefreshCw, ChevronDown } from 'lucide-react';
 
-const FIELDS = [
-    { label: 'Name', value: 'name' },
-    { label: 'Email', value: 'email' },
-    { label: 'Phone', value: 'phone' },
-    { label: 'Address', value: 'address' },
-    { label: 'Owner', value: 'owner' },
-];
-
-const OPERATORS = [
+const DEFAULT_OPERATORS = [
     { label: 'Equals', value: 'exact' },
     { label: 'Contains', value: 'icontains' },
     { label: 'Starts with', value: 'istartswith' },
     { label: 'Ends with', value: 'iendswith' },
 ];
 
-const FilterBuilder = ({ onApply, onSave, onClose, initialFilters, initialView, currentViewId, isSystemView }) => {
+const FilterBuilder = ({
+    onApply,
+    onSave,
+    onClose,
+    initialFilters,
+    initialView,
+    currentViewId,
+    isSystemView,
+    fields = [],
+    defaultField = 'name'
+}) => {
     const [logic, setLogic] = useState(initialView?.filters?.logic || initialFilters?.logic || 'AND');
     const [conditions, setConditions] = useState(initialView?.filters?.conditions || initialFilters?.conditions || [
-        { field: 'name', operator: 'icontains', value: '' }
+        { field: defaultField, operator: 'icontains', value: '' }
     ]);
     const [viewName, setViewName] = useState(initialView?.name || '');
     const [showSave, setShowSave] = useState(!!initialView);
@@ -39,7 +41,7 @@ const FilterBuilder = ({ onApply, onSave, onClose, initialFilters, initialView, 
     }, []);
 
     const addCondition = () => {
-        setConditions([...conditions, { field: 'name', operator: 'icontains', value: '' }]);
+        setConditions([...conditions, { field: defaultField, operator: 'icontains', value: '' }]);
     };
 
     const removeCondition = (index) => {
@@ -93,7 +95,7 @@ const FilterBuilder = ({ onApply, onSave, onClose, initialFilters, initialView, 
                             onChange={(e) => updateCondition(index, 'field', e.target.value)}
                             className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
                         >
-                            {FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                            {fields.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                         </select>
 
                         <select
@@ -101,16 +103,16 @@ const FilterBuilder = ({ onApply, onSave, onClose, initialFilters, initialView, 
                             onChange={(e) => updateCondition(index, 'operator', e.target.value)}
                             className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
                         >
-                            {OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            {DEFAULT_OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
 
-                        {cond.field === 'owner' ? (
+                        {['owner', 'assigned_to'].includes(cond.field) ? (
                             <details className="flex-2 relative group">
                                 <summary className="flex items-center justify-between border border-gray-300 rounded-md px-3 py-2 text-sm bg-white cursor-pointer list-none">
                                     <span className="truncate">
                                         {Array.isArray(cond.value) && cond.value.length > 0
                                             ? `${cond.value.length} selected`
-                                            : 'Select Owners'}
+                                            : 'Select Users'}
                                     </span>
                                     <ChevronDown size={14} className="ml-2 text-gray-400 group-open:rotate-180 transition-transform" />
                                 </summary>

@@ -4,6 +4,8 @@ import MainLayout from './components/Layout/MainLayout';
 import LoginPage from './pages/LoginPage';
 import ClientsPage from './pages/ClientsPage';
 import ClientDetailPage from './pages/ClientDetailPage';
+import TasksPage from './pages/TasksPage';
+import TaskDetailPage from './pages/TaskDetailPage';
 import api from './api';
 
 function App() {
@@ -43,6 +45,8 @@ function App() {
         <Route path="/" element={user ? <MainLayout user={user} setUser={setUser} /> : <Navigate to="/login" />}>
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/:id" element={<ClientDetailPage />} />
+          <Route path="tasks" element={<TasksPage />} />
+          <Route path="tasks/:id" element={<TaskDetailPage />} />
           <Route index element={<Navigate to="clients" />} />
         </Route>
       </Routes>
