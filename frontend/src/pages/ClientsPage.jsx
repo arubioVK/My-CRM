@@ -7,10 +7,12 @@ import { Filter, X, ChevronLeft, ChevronRight, GripVertical, ArrowUp, ArrowDown,
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const ALL_COLUMNS = [
-    { id: 'name', label: 'Name' },
-    { id: 'email', label: 'Email' },
-    { id: 'phone', label: 'Phone' },
-    { id: 'address', label: 'Address' },
+    { id: 'name', label: 'Name', type: 'string' },
+    { id: 'email', label: 'Email', type: 'string' },
+    { id: 'phone', label: 'Phone', type: 'string' },
+    { id: 'address', label: 'Address', type: 'string' },
+    { id: 'created_at', label: 'Created At', type: 'date' },
+    { id: 'updated_at', label: 'Updated At', type: 'date' },
 ];
 
 const ClientsPage = () => {
@@ -381,7 +383,7 @@ const ClientsPage = () => {
                     initialView={editingView}
                     currentViewId={currentViewId}
                     isSystemView={views.find(v => v.id === currentViewId)?.is_system}
-                    fields={[...ALL_COLUMNS, { id: 'owner', label: 'Owner' }].map(c => ({ label: c.label, value: c.id }))}
+                    fields={[...ALL_COLUMNS, { id: 'owner', label: 'Owner', type: 'user' }].map(c => ({ label: c.label, value: c.id, type: c.type }))}
                     defaultField="name"
                 />
             )}

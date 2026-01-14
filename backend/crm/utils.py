@@ -46,8 +46,67 @@ def build_q_object(filters, user=None):
                     current_cond_q = Q(**{field: value})
             else:
                 # Construct the lookup string, e.g., 'name__icontains'
-                lookup = f"{field}__{operator}" if operator != 'exact' else field
-                current_cond_q = Q(**{lookup: value})
+                if operator == 'isnull':
+                    # Ensure value is boolean for isnull
+                    bool_value = str(value).lower() == 'true' if not isinstance(value, bool) else value
+                    lookup = f"{field}__isnull"
+                    current_cond_q = Q(**{lookup: bool_value})
+                elif operator == 'in':
+                    # Ensure value is a list for in
+                    list_value = value if isinstance(value, list) else [value]
+                    lookup = f"{field}__in"
+                    current_cond_q = Q(**{lookup: list_value})
+                elif operator == 'today':
+                    from django.utils import timezone
+                    today = timezone.now().date()
+                    lookup = f"{field}__date"
+                    current_cond_q = Q(**{lookup: today})
+                elif operator == 'yesterday':
+                    from django.utils import timezone
+                    from datetime import timedelta
+                    yesterday = timezone.now().date() - timedelta(days=1)
+                    lookup = f"{field}__date"
+                    current_cond_q = Q(**{lookup: yesterday})
+                elif operator == 'tomorrow':
+                    from django.utils import timezone
+                    from datetime import timedelta
+                    tomorrow = timezone.now().date() + timedelta(days=1)
+                    lookup = f"{field}__date"
+                    current_cond_q = Q(**{lookup: tomorrow})
+                elif operator == 'after_today':
+                    from django.utils import timezone
+                    today = timezone.now().date()
+                    lookup = f"{field}__date__gt"
+                    current_cond_q = Q(**{lookup: today})
+                elif operator == 'before_today':
+                    from django.utils import timezone
+                    today = timezone.now().date()
+                    lookup = f"{field}__date__lt"
+                    current_cond_q = Q(**{lookup: today})
+                elif operator == 'past_n_days':
+                    from django.utils import timezone
+                    from datetime import timedelta
+                    n = int(value) if value else 0
+                    start_date = timezone.now() - timedelta(days=n)
+                    lookup = f"{field}__gte"
+                    current_cond_q = Q(**{lookup: start_date})
+                elif operator == 'future_n_days':
+                    from django.utils import timezone
+                    from datetime import timedelta
+                    n = int(value) if value else 0
+                    end_date = timezone.now() + timedelta(days=n)
+                    lookup = f"{field}__lte"
+                    current_cond_q = Q(**{lookup: end_date})
+                elif operator == 'between':
+                    # Expecting value to be a list [start, end]
+                    if isinstance(value, list) and len(value) == 2:
+                        lookup = f"{field}__range"
+                        current_cond_q = Q(**{lookup: value})
+                    else:
+                        current_cond_q = Q()
+                else:
+                    lookup = f"{field}__{operator}" if operator != 'exact' else field
+                    current_cond_q = Q(**{lookup: value})
             
             # Combine with the main q_obj based on logic
             if logic == 'OR':

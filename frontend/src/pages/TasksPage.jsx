@@ -7,12 +7,26 @@ import { Filter, X, ChevronLeft, ChevronRight, GripVertical, ArrowUp, ArrowDown,
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const ALL_COLUMNS = [
-    { id: 'title', label: 'Title' },
-    { id: 'status', label: 'Status' },
-    { id: 'priority', label: 'Priority' },
-    { id: 'due_date', label: 'Due Date' },
-    { id: 'client_name', label: 'Client' },
-    { id: 'assigned_to_name', label: 'Assigned To' },
+    { id: 'title', label: 'Title', type: 'string' },
+    {
+        id: 'status', label: 'Status', type: 'select', options: [
+            { label: 'To Do', value: 'todo' },
+            { label: 'In Progress', value: 'in_progress' },
+            { label: 'Done', value: 'done' },
+        ]
+    },
+    {
+        id: 'priority', label: 'Priority', type: 'select', options: [
+            { label: 'Low', value: 'low' },
+            { label: 'Medium', value: 'medium' },
+            { label: 'High', value: 'high' },
+        ]
+    },
+    { id: 'due_date', label: 'Due Date', type: 'date' },
+    { id: 'client_name', label: 'Client', type: 'string' },
+    { id: 'assigned_to_name', label: 'Assigned To', type: 'string' },
+    { id: 'created_at', label: 'Created At', type: 'date' },
+    { id: 'updated_at', label: 'Updated At', type: 'date' },
 ];
 
 const TasksPage = () => {
@@ -230,7 +244,7 @@ const TasksPage = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Tareas</h1>
+                <h1 className="text-2xl font-bold text-gray-800">Tasks</h1>
                 <div className="flex items-center space-x-3">
                     <ExportButton
                         endpoint="/crm/tasks/"
@@ -247,7 +261,7 @@ const TasksPage = () => {
                             }`}
                     >
                         <Filter size={16} className="mr-2" />
-                        {activeFilters ? 'Filtros Aplicados' : 'Filtrar'}
+                        {activeFilters ? 'Filters Applied' : 'Filter'}
                     </button>
                     <button
                         onClick={() => setShowColumnConfig(!showColumnConfig)}
@@ -257,7 +271,7 @@ const TasksPage = () => {
                             }`}
                     >
                         <Settings size={16} className="mr-2" />
-                        Columnas
+                        Columns
                     </button>
                 </div>
             </div>
@@ -353,11 +367,25 @@ const TasksPage = () => {
                     currentViewId={currentViewId}
                     isSystemView={views.find(v => v.id === currentViewId)?.is_system}
                     fields={[
-                        { label: 'Title', value: 'title' },
-                        { label: 'Status', value: 'status' },
-                        { label: 'Priority', value: 'priority' },
-                        { label: 'Due Date', value: 'due_date' },
-                        { label: 'Assigned To', value: 'assigned_to' },
+                        { label: 'Title', value: 'title', type: 'string' },
+                        {
+                            label: 'Status', value: 'status', type: 'select', options: [
+                                { label: 'To Do', value: 'todo' },
+                                { label: 'In Progress', value: 'in_progress' },
+                                { label: 'Done', value: 'done' },
+                            ]
+                        },
+                        {
+                            label: 'Priority', value: 'priority', type: 'select', options: [
+                                { label: 'Low', value: 'low' },
+                                { label: 'Medium', value: 'medium' },
+                                { label: 'High', value: 'high' },
+                            ]
+                        },
+                        { label: 'Due Date', value: 'due_date', type: 'date' },
+                        { label: 'Assigned To', value: 'assigned_to', type: 'user' },
+                        { label: 'Created At', value: 'created_at', type: 'date' },
+                        { label: 'Updated At', value: 'updated_at', type: 'date' },
                     ]}
                     defaultField="title"
                 />
@@ -366,14 +394,14 @@ const TasksPage = () => {
             {showColumnConfig && (
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 mb-6">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-800">Gestionar Columnas</h3>
+                        <h3 className="text-lg font-semibold text-gray-800">Manage Columns</h3>
                         <button onClick={() => setShowColumnConfig(false)} className="text-gray-400 hover:text-gray-600">
                             <X size={20} />
                         </button>
                     </div>
                     <div className="flex flex-col md:flex-row gap-6">
                         <div className="flex-1 border-r border-gray-100 pr-6">
-                            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Columnas Disponibles</h4>
+                            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Available Columns</h4>
                             <div className="space-y-2">
                                 {ALL_COLUMNS.map(col => (
                                     <label key={col.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md cursor-pointer transition-colors">
@@ -389,7 +417,7 @@ const TasksPage = () => {
                             </div>
                         </div>
                         <div className="flex-1">
-                            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Orden Visible</h4>
+                            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Visible Order</h4>
                             <DragDropContext onDragEnd={handleColumnReorder}>
                                 <Droppable droppableId="column-config">
                                     {(provided) => (
@@ -497,7 +525,7 @@ const TasksPage = () => {
                         ) : (
                             <tr>
                                 <td colSpan={columnOrder.length} className="px-6 py-4 text-center text-sm text-gray-500">
-                                    No se encontraron tareas.
+                                    No tasks found.
                                 </td>
                             </tr>
                         )}

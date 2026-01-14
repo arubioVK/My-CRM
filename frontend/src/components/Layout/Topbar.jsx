@@ -21,7 +21,6 @@ const Topbar = ({ user, setUser }) => {
         <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
             {/* Left side (Breadcrumbs or Title could go here) */}
             <div className="text-lg font-medium text-gray-700">
-                Dashboard
             </div>
 
             {/* Right side - User Profile */}
