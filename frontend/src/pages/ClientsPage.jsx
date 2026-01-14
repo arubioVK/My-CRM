@@ -25,64 +25,76 @@ const ClientsPage = () => {
     const [columnOrder, setColumnOrder] = useState(['name', 'email', 'phone', 'address']);
     const [sorting, setSorting] = useState({ field: 'name', direction: 'asc' });
     const [showColumnConfig, setShowColumnConfig] = useState(false);
+    const lastRequestRef = React.useRef('');
+    const viewsFetchedRef = React.useRef(false);
 
     useEffect(() => {
+        if (viewsFetchedRef.current) return;
+        viewsFetchedRef.current = true;
         fetchViews();
     }, []);
 
     useEffect(() => {
-        fetchClients();
+        const controller = new AbortController();
+        fetchClients(controller.signal);
+        return () => controller.abort();
     }, [currentViewId, activeFilters, sorting]);
 
-    useEffect(() => {
-        // Load column order and sorting when view changes
-        const currentView = views.find(v => v.id === currentViewId);
-        if (currentView) {
-            if (currentView.column_order && currentView.column_order.length > 0) {
-                setColumnOrder(currentView.column_order);
-            } else {
-                setColumnOrder(['name', 'email', 'phone', 'address']);
-            }
-
-            if (currentView.sorting && currentView.sorting.field) {
-                setSorting(currentView.sorting);
-            } else {
-                setSorting({ field: 'name', direction: 'asc' });
-            }
+    const handleSelectView = (viewId, viewsList = views) => {
+        const view = viewsList.find(v => v.id === viewId);
+        if (view) {
+            setColumnOrder(view.column_order && view.column_order.length > 0 ? view.column_order : ['name', 'email', 'phone', 'address']);
+            setSorting(view.sorting && view.sorting.field ? view.sorting : { field: 'name', direction: 'asc' });
+            setCurrentViewId(viewId);
+            setActiveFilters(null);
+            setEditingView(null);
         } else {
             setColumnOrder(['name', 'email', 'phone', 'address']);
             setSorting({ field: 'name', direction: 'asc' });
+            setCurrentViewId(viewId);
         }
-    }, [currentViewId, views]);
+    };
 
     const fetchViews = async () => {
         try {
             const response = await api.get('/crm/saved-views/');
-            setViews(response.data);
+            const viewsData = response.data;
+            setViews(viewsData);
             // Set default view to "All Clients" if available
-            if (!currentViewId && response.data.length > 0) {
-                const allClientsView = response.data.find(v => v.name === 'All Clients');
-                if (allClientsView) setCurrentViewId(allClientsView.id);
+            if (!currentViewId && viewsData.length > 0) {
+                const allClientsView = viewsData.find(v => v.name === 'All Clients');
+                if (allClientsView) {
+                    handleSelectView(allClientsView.id, viewsData);
+                }
             }
         } catch (error) {
             console.error('Error fetching views:', error);
         }
     };
 
-    const fetchClients = async () => {
+    const fetchClients = async (signal) => {
+        const params = {
+            sort: JSON.stringify(sorting)
+        };
+
+        if (activeFilters) {
+            params.filters = JSON.stringify(activeFilters);
+        } else if (currentViewId) {
+            params.view_id = currentViewId;
+        }
+
+        const signature = JSON.stringify(params);
+        if (signature === lastRequestRef.current) return;
+        lastRequestRef.current = signature;
+
         try {
-            let params = {};
-            if (activeFilters) {
-                params.filters = JSON.stringify(activeFilters);
-            } else if (currentViewId) {
-                params.view_id = currentViewId;
-            }
-
-            params.sort = JSON.stringify(sorting);
-
-            const response = await api.get('/crm/clients/', { params });
+            const response = await api.get('/crm/clients/', {
+                params,
+                signal
+            });
             setClients(response.data);
         } catch (error) {
+            if (error.name === 'CanceledError') return;
             console.error('Error fetching clients:', error);
         }
     };
@@ -289,9 +301,7 @@ const ClientsPage = () => {
                                             {...provided.dragHandleProps}
                                             onClick={() => {
                                                 if (renamingViewId !== view.id) {
-                                                    setCurrentViewId(view.id);
-                                                    setActiveFilters(null);
-                                                    setEditingView(null);
+                                                    handleSelectView(view.id);
                                                 }
                                             }}
                                             onDoubleClick={() => {

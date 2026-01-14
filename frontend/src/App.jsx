@@ -9,8 +9,12 @@ import api from './api';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const authCheckStarted = React.useRef(false);
 
   useEffect(() => {
+    if (authCheckStarted.current) return;
+    authCheckStarted.current = true;
+
     const checkAuth = async () => {
       try {
         const response = await api.get('/auth/me/');
