@@ -28,13 +28,15 @@ const ExportButton = ({ endpoint, filters, sort, columns, filename = 'export' })
                 columns: columns ? JSON.stringify(columns) : undefined,
             };
 
-            // endpoint is like "/crm/clients/" or "/crm/tasks/"
-            // We want "/crm/export/clients/" or "/crm/export/tasks/"
-            const type = endpoint.includes('clients') ? 'clients' : 'tasks';
-            const exportUrl = `/crm/export/${type}/`;
+            const normalizedEndpoint = endpoint.endsWith('/') ? endpoint : `${endpoint}/`;
+            const exportUrl = `${normalizedEndpoint}export-view/`;
 
             const response = await api.get(exportUrl, {
-                params,
+                params: {
+                    ...params,
+                    file_format: format,
+                    format: undefined, // Remove the original format param
+                },
                 responseType: 'blob',
             });
 

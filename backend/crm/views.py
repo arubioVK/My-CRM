@@ -12,82 +12,6 @@ import json
 import pandas as pd
 import io
 
-import io
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def export_data(request, type):
-    print(f"DEBUG: Standalone export called for {type} by {request.user}")
-    
-    if type == 'clients':
-        queryset = Client.objects.all()
-        # Apply filters logic here (simplified for debug)
-        view_id = request.query_params.get('view_id', None)
-        if view_id:
-            try:
-                saved_view = SavedView.objects.get(id=view_id)
-                q_obj = build_q_object(saved_view.filters, request.user)
-                queryset = queryset.filter(q_obj)
-            except SavedView.DoesNotExist:
-                pass
-        
-        serializer = ClientSerializer(queryset, many=True)
-        sheet_name = 'Clients'
-        filename = 'clients_export'
-    elif type == 'tasks':
-        queryset = Task.objects.all()
-        # Apply filters logic here
-        view_id = request.query_params.get('view_id', None)
-        if view_id:
-            try:
-                saved_view = SavedView.objects.get(id=view_id)
-                q_obj = build_q_object(saved_view.filters, request.user)
-                queryset = queryset.filter(q_obj)
-            except SavedView.DoesNotExist:
-                pass
-        
-        serializer = TaskSerializer(queryset, many=True)
-        sheet_name = 'Tasks'
-        filename = 'tasks_export'
-    else:
-        return Response({"detail": "Invalid type"}, status=status.HTTP_400_BAD_REQUEST)
-
-    data = serializer.data
-    if not data:
-        return Response({"detail": "No data to export"}, status=status.HTTP_400_BAD_REQUEST)
-        
-    df = pd.DataFrame(data)
-    
-    # Handle columns
-    columns_json = request.query_params.get('columns', None)
-    if columns_json:
-        try:
-            columns = json.loads(columns_json)
-            valid_columns = [col for col in columns if col in df.columns]
-            if valid_columns:
-                df = df[valid_columns]
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    format = request.query_params.get('format', 'csv')
-    if format == 'xlsx':
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name=sheet_name)
-        response = HttpResponse(
-            output.getvalue(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        response['Content-Disposition'] = f'attachment; filename="{filename}.xlsx"'
-        return response
-    else:
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
-        df.to_csv(path_or_buf=response, index=False)
-        return response
-
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
@@ -150,46 +74,51 @@ class ClientViewSet(viewsets.ModelViewSet):
             
         return queryset
 
-    @action(detail=False, methods=['GET'], url_path='export-data')
+    @action(detail=False, methods=['GET'], url_path='export-view')
     def export(self, request):
-        print(f"DEBUG: Client export action called by {request.user}")
-        print(f"DEBUG: Query params: {request.query_params}")
-        queryset = self.get_queryset()
-        format = request.query_params.get('format', 'csv')
-        columns_json = request.query_params.get('columns', None)
-        
-        serializer = self.get_serializer(queryset, many=True)
-        data = serializer.data
-        
-        if not data:
-            return Response({"detail": "No data to export"}, status=status.HTTP_400_BAD_REQUEST)
+        print("DEBUG: EXPORT ACTION HIT (Clients) - START")
+        try:
+            queryset = self.get_queryset()
+            print(f"DEBUG: Queryset count: {queryset.count()}")
+            file_format = request.query_params.get('file_format', 'csv')
+            columns_json = request.query_params.get('columns', None)
             
-        df = pd.DataFrame(data)
-        
-        if columns_json:
-            try:
-                columns = json.loads(columns_json)
-                valid_columns = [col for col in columns if col in df.columns]
-                if valid_columns:
-                    df = df[valid_columns]
-            except (json.JSONDecodeError, TypeError):
-                pass
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+            print(f"DEBUG: Data length: {len(data)}")
+            
+            if not data:
+                return Response({"detail": "No data to export"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            df = pd.DataFrame(data)
+            
+            if columns_json:
+                try:
+                    columns = json.loads(columns_json)
+                    valid_columns = [col for col in columns if col in df.columns]
+                    if valid_columns:
+                        df = df[valid_columns]
+                except (json.JSONDecodeError, TypeError):
+                    pass
 
-        if format == 'xlsx':
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name='Clients')
-            response = HttpResponse(
-                output.getvalue(),
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-            response['Content-Disposition'] = 'attachment; filename="clients_export.xlsx"'
-            return response
-        else:
-            response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = 'attachment; filename="clients_export.csv"'
-            df.to_csv(path_or_buf=response, index=False)
-            return response
+            if file_format == 'xlsx':
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, sheet_name='Clients')
+                response = HttpResponse(
+                    output.getvalue(),
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+                response['Content-Disposition'] = 'attachment; filename="clients_export.xlsx"'
+                return response
+            else:
+                response = HttpResponse(content_type='text/csv')
+                response['Content-Disposition'] = 'attachment; filename="clients_export.csv"'
+                df.to_csv(path_or_buf=response, index=False)
+                return response
+        except Exception as e:
+            print(f"DEBUG: EXPORT ERROR: {str(e)}")
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class SavedViewViewSet(viewsets.ModelViewSet):
     serializer_class = SavedViewSerializer
@@ -281,46 +210,51 @@ class TaskViewSet(viewsets.ModelViewSet):
             
         return queryset
 
-    @action(detail=False, methods=['GET'], url_path='export-data')
+    @action(detail=False, methods=['GET'], url_path='export-view')
     def export(self, request):
-        print(f"DEBUG: Task export action called by {request.user}")
-        print(f"DEBUG: Query params: {request.query_params}")
-        queryset = self.get_queryset()
-        format = request.query_params.get('format', 'csv')
-        columns_json = request.query_params.get('columns', None)
-        
-        serializer = self.get_serializer(queryset, many=True)
-        data = serializer.data
-        
-        if not data:
-            return Response({"detail": "No data to export"}, status=status.HTTP_400_BAD_REQUEST)
+        print("DEBUG: EXPORT ACTION HIT (Tasks) - START")
+        try:
+            queryset = self.get_queryset()
+            print(f"DEBUG: Queryset count: {queryset.count()}")
+            file_format = request.query_params.get('file_format', 'csv')
+            columns_json = request.query_params.get('columns', None)
+            
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+            print(f"DEBUG: Data length: {len(data)}")
+            
+            if not data:
+                return Response({"detail": "No data to export"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            df = pd.DataFrame(data)
+            
+            if columns_json:
+                try:
+                    columns = json.loads(columns_json)
+                    valid_columns = [col for col in columns if col in df.columns]
+                    if valid_columns:
+                        df = df[valid_columns]
+                except (json.JSONDecodeError, TypeError):
+                    pass
 
-        df = pd.DataFrame(data)
-        
-        if columns_json:
-            try:
-                columns = json.loads(columns_json)
-                valid_columns = [col for col in columns if col in df.columns]
-                if valid_columns:
-                    df = df[valid_columns]
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-        if format == 'xlsx':
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name='Tasks')
-            response = HttpResponse(
-                output.getvalue(),
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-            response['Content-Disposition'] = 'attachment; filename="tasks_export.xlsx"'
-            return response
-        else:
-            response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = 'attachment; filename="tasks_export.csv"'
-            df.to_csv(path_or_buf=response, index=False)
-            return response
+            if file_format == 'xlsx':
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, sheet_name='Tasks')
+                response = HttpResponse(
+                    output.getvalue(),
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+                response['Content-Disposition'] = 'attachment; filename="tasks_export.xlsx"'
+                return response
+            else:
+                response = HttpResponse(content_type='text/csv')
+                response['Content-Disposition'] = 'attachment; filename="tasks_export.csv"'
+                df.to_csv(path_or_buf=response, index=False)
+                return response
+        except Exception as e:
+            print(f"DEBUG: EXPORT ERROR: {str(e)}")
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def perform_create(self, serializer):
         # Default assigned_to to current user if not provided?
