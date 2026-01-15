@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Client, SavedView, Task
+from .models import Client, SavedView, Task, Note
 from django.contrib.auth.models import User
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -19,4 +19,11 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
+        fields = '__all__'
+
+class NoteSerializer(serializers.ModelSerializer):
+    author_name = serializers.ReadOnlyField(source='author.username')
+
+    class Meta:
+        model = Note
         fields = '__all__'

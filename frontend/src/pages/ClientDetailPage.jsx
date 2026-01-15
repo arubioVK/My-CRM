@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Lock, Unlock, Save, X, ArrowLeft, User, Mail, Phone, MapPin, CheckSquare, Plus, ChevronRight } from 'lucide-react';
+import { Lock, Unlock, Save, X, ArrowLeft, User, Mail, Phone, MapPin, CheckSquare, Plus, ChevronRight, StickyNote, Send, Trash2 } from 'lucide-react';
 
 const ClientDetailPage = () => {
     const { id } = useParams();
@@ -13,6 +13,10 @@ const ClientDetailPage = () => {
     const [saving, setSaving] = useState(false);
     const [tasks, setTasks] = useState([]);
     const [loadingTasks, setLoadingTasks] = useState(true);
+    const [notes, setNotes] = useState([]);
+    const [loadingNotes, setLoadingNotes] = useState(true);
+    const [newNoteContent, setNewNoteContent] = useState('');
+    const [addingNote, setAddingNote] = useState(false);
     const lastFetchedIdRef = React.useRef(null);
 
     useEffect(() => {
@@ -20,16 +24,60 @@ const ClientDetailPage = () => {
         lastFetchedIdRef.current = id;
         fetchClient();
         fetchTasks();
+        fetchNotes();
     }, [id]);
 
     const fetchTasks = async () => {
         try {
             const response = await api.get('/crm/tasks/', { params: { client_id: id } });
-            setTasks(response.data);
+            // Handle paginated response: use data.results if present, else fallback to data directly
+            setTasks(response.data.results || response.data);
             setLoadingTasks(false);
         } catch (error) {
             console.error('Error fetching tasks:', error);
             setLoadingTasks(false);
+        }
+    };
+
+    const fetchNotes = async () => {
+        try {
+            const response = await api.get('/crm/notes/', { params: { client_id: id } });
+            setNotes(response.data.results || response.data);
+            setLoadingNotes(false);
+        } catch (error) {
+            console.error('Error fetching notes:', error);
+            setLoadingNotes(false);
+        }
+    };
+
+    const handleAddNote = async (e) => {
+        e.preventDefault();
+        if (!newNoteContent.trim() || addingNote) return;
+
+        setAddingNote(true);
+        try {
+            const response = await api.post('/crm/notes/', {
+                content: newNoteContent,
+                client: id
+            });
+            setNotes(prev => [response.data, ...prev]);
+            setNewNoteContent('');
+            setAddingNote(false);
+        } catch (error) {
+            console.error('Error adding note:', error);
+            alert('Error adding note');
+            setAddingNote(false);
+        }
+    };
+
+    const handleDeleteNote = async (noteId) => {
+        if (!window.confirm('Are you sure you want to delete this note?')) return;
+        try {
+            await api.delete(`/crm/notes/${noteId}/`);
+            setNotes(prev => prev.filter(n => n.id !== noteId));
+        } catch (error) {
+            console.error('Error deleting note:', error);
+            alert('Error deleting note');
         }
     };
 
@@ -235,12 +283,20 @@ const ClientDetailPage = () => {
                                 <CheckSquare size={20} className="mr-2 text-indigo-600" />
                                 Related Tasks
                             </h2>
-                            <button
-                                className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800"
-                                onClick={() => navigate('/tasks')}
-                            >
-                                <Plus size={16} className="mr-1" /> Add Task
-                            </button>
+                            <div className="flex items-center space-x-4">
+                                <button
+                                    className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                                    onClick={() => navigate(`/tasks?client_id=${id}`)}
+                                >
+                                    <ChevronRight size={16} className="mr-1" /> View tasks
+                                </button>
+                                <button
+                                    className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                                    onClick={() => navigate('/tasks')}
+                                >
+                                    <Plus size={16} className="mr-1" /> Add Task
+                                </button>
+                            </div>
                         </div>
                         <div className="p-6">
                             {loadingTasks ? (
@@ -311,9 +367,63 @@ const ClientDetailPage = () => {
                         </div>
                     </div>
 
-                    <div className="bg-amber-50 p-6 rounded-lg border border-amber-100">
-                        <h3 className="text-sm font-semibold text-amber-700 uppercase tracking-wider mb-2">Notes</h3>
-                        <p className="text-xs text-amber-600 italic">No notes available for this client.</p>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="bg-amber-50 px-6 py-4 border-b border-amber-100 flex items-center">
+                            <StickyNote size={18} className="mr-2 text-amber-600" />
+                            <h3 className="text-sm font-semibold text-amber-700 uppercase tracking-wider">Notes</h3>
+                        </div>
+                        <div className="p-4">
+                            <form onSubmit={handleAddNote} className="mb-4">
+                                <div className="relative">
+                                    <textarea
+                                        value={newNoteContent}
+                                        onChange={(e) => setNewNoteContent(e.target.value)}
+                                        placeholder="Add a note..."
+                                        rows="2"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none pr-10"
+                                    ></textarea>
+                                    <button
+                                        type="submit"
+                                        disabled={!newNoteContent.trim() || addingNote}
+                                        className="absolute right-2 bottom-2 p-1.5 text-amber-600 hover:text-amber-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <Send size={18} />
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                                {loadingNotes ? (
+                                    <div className="flex justify-center py-4">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-500"></div>
+                                    </div>
+                                ) : notes.length > 0 ? (
+                                    notes.map(note => (
+                                        <div key={note.id} className="group p-3 bg-amber-50 rounded-lg border border-amber-100 relative">
+                                            <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.content}</p>
+                                            <div className="mt-2 flex items-center justify-between">
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="text-[10px] font-medium text-amber-700 bg-amber-200 px-1.5 py-0.5 rounded uppercase">
+                                                        {note.author_name || 'Admin'}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400">
+                                                        {new Date(note.created_at).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteNote(note.id)}
+                                                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-xs text-center text-gray-400 italic py-4">No notes available for this client.</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

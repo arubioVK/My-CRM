@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
-from .models import Client, SavedView, Task
-from .serializers import ClientSerializer, SavedViewSerializer, TaskSerializer
+from .models import Client, SavedView, Task, Note
+from .serializers import ClientSerializer, SavedViewSerializer, TaskSerializer, NoteSerializer
 from .utils import build_q_object
 from rest_framework.decorators import action
 from django.http import HttpResponse
@@ -263,3 +263,17 @@ class TaskViewSet(viewsets.ModelViewSet):
         # Default assigned_to to current user if not provided?
         # For now, just save as is.
         serializer.save()
+
+class NoteViewSet(viewsets.ModelViewSet):
+    queryset = Note.objects.all()
+    serializer_class = NoteSerializer
+
+    def get_queryset(self):
+        queryset = Note.objects.all()
+        client_id = self.request.query_params.get('client_id', None)
+        if client_id:
+            queryset = queryset.filter(client_id=client_id)
+        return queryset.order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)

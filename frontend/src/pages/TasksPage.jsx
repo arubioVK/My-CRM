@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import FilterBuilder from '../components/CRM/FilterBuilder';
 import ExportButton from '../components/CRM/ExportButton';
@@ -31,6 +31,7 @@ const ALL_COLUMNS = [
 
 const TasksPage = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [tasks, setTasks] = useState([]);
     const [views, setViews] = useState([]);
     const [currentViewId, setCurrentViewId] = useState(null);
@@ -64,6 +65,18 @@ const TasksPage = () => {
         return () => controller.abort();
     }, [currentViewId, activeFilters, sorting, currentPage, pageSize]);
 
+    useEffect(() => {
+        const clientId = searchParams.get('client_id');
+        if (clientId) {
+            setActiveFilters({
+                logic: 'AND',
+                conditions: [{ field: 'client', operator: 'exact', value: clientId }]
+            });
+            setCurrentViewId(null);
+            setCurrentPage(1);
+        }
+    }, [searchParams]);
+
     const handleSelectView = (viewId, viewsList = views) => {
         const view = viewsList.find(v => v.id === viewId);
         if (view) {
@@ -86,7 +99,8 @@ const TasksPage = () => {
             const response = await api.get('/crm/saved-views/', { params: { view_type: 'task' } });
             const viewsData = response.data;
             setViews(viewsData);
-            if (!currentViewId && viewsData.length > 0) {
+            // Only set default view if no client_id is present in URL
+            if (!currentViewId && viewsData.length > 0 && !searchParams.get('client_id')) {
                 const allTasksView = viewsData.find(v => v.name === 'All Tasks');
                 if (allTasksView) {
                     handleSelectView(allTasksView.id, viewsData);
@@ -424,6 +438,7 @@ const TasksPage = () => {
                             ]
                         },
                         { label: 'Due Date', value: 'due_date', type: 'date' },
+                        { label: 'Client', value: 'client', type: 'string' },
                         { label: 'Assigned To', value: 'assigned_to', type: 'user' },
                         { label: 'Created At', value: 'created_at', type: 'date' },
                         { label: 'Updated At', value: 'updated_at', type: 'date' },
