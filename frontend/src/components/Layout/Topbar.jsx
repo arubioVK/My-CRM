@@ -40,6 +40,16 @@ const Topbar = ({ user, setUser }) => {
                 {dropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-100 z-10">
                         <button
+                            onClick={() => {
+                                navigate('/settings');
+                                setDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                        >
+                            <User size={16} className="mr-2" />
+                            Settings
+                        </button>
+                        <button
                             onClick={handleLogout}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
                         >

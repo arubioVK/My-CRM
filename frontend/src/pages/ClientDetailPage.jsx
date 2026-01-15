@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Lock, Unlock, Save, X, ArrowLeft, User, Mail, Phone, MapPin, CheckSquare, Plus, ChevronRight, StickyNote, Send, Trash2 } from 'lucide-react';
-
+import { Lock, Unlock, Save, X, ArrowLeft, User, Mail, Phone, MapPin, CheckSquare, Plus, ChevronRight, StickyNote, Send, Trash2, RefreshCw, Inbox } from 'lucide-react';
 const ClientDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -17,6 +16,12 @@ const ClientDetailPage = () => {
     const [loadingNotes, setLoadingNotes] = useState(true);
     const [newNoteContent, setNewNoteContent] = useState('');
     const [addingNote, setAddingNote] = useState(false);
+    const [emails, setEmails] = useState([]);
+    const [loadingEmails, setLoadingEmails] = useState(true);
+    const [syncingEmails, setSyncingEmails] = useState(false);
+    const [showEmailModal, setShowEmailModal] = useState(false);
+    const [emailForm, setEmailForm] = useState({ subject: '', body: '' });
+    const [sendingEmail, setSendingEmail] = useState(false);
     const lastFetchedIdRef = React.useRef(null);
 
     useEffect(() => {
@@ -25,6 +30,7 @@ const ClientDetailPage = () => {
         fetchClient();
         fetchTasks();
         fetchNotes();
+        fetchEmails();
     }, [id]);
 
     const fetchTasks = async () => {
@@ -78,6 +84,51 @@ const ClientDetailPage = () => {
         } catch (error) {
             console.error('Error deleting note:', error);
             alert('Error deleting note');
+        }
+    };
+
+    const fetchEmails = async () => {
+        try {
+            const response = await api.get('/crm/emails/', { params: { client_id: id } });
+            setEmails(response.data.results || response.data);
+            setLoadingEmails(false);
+        } catch (error) {
+            console.error('Error fetching emails:', error);
+            setLoadingEmails(false);
+        }
+    };
+
+    const handleSyncEmails = async () => {
+        setSyncingEmails(true);
+        try {
+            await api.post('/crm/emails/sync/');
+            await fetchEmails();
+            setSyncingEmails(false);
+        } catch (error) {
+            console.error('Error syncing emails:', error);
+            alert('Error syncing emails. Please make sure your Google account is connected in Settings.');
+            setSyncingEmails(false);
+        }
+    };
+
+    const handleSendEmail = async (e) => {
+        e.preventDefault();
+        setSendingEmail(true);
+        try {
+            const response = await api.post('/crm/emails/send/', {
+                to_email: client.email,
+                subject: emailForm.subject,
+                body: emailForm.body,
+                client_id: id
+            });
+            setEmails(prev => [response.data, ...prev]);
+            setShowEmailModal(false);
+            setEmailForm({ subject: '', body: '' });
+            setSendingEmail(false);
+        } catch (error) {
+            console.error('Error sending email:', error);
+            alert('Error sending email. Please make sure your Google account is connected.');
+            setSendingEmail(false);
         }
     };
 
@@ -349,6 +400,72 @@ const ClientDetailPage = () => {
                             )}
                         </div>
                     </div>
+                    {/* Emails Section */}
+                    <div className="mt-8 bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                                <Inbox size={20} className="mr-2 text-indigo-600" />
+                                Synced Emails
+                            </h2>
+                            <div className="flex items-center space-x-4">
+                                <button
+                                    onClick={() => setShowEmailModal(true)}
+                                    className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                                >
+                                    <Send size={16} className="mr-1" /> Send Email
+                                </button>
+                                <button
+                                    onClick={handleSyncEmails}
+                                    disabled={syncingEmails}
+                                    className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                                >
+                                    <RefreshCw size={16} className={`mr-1 ${syncingEmails ? 'animate-spin' : ''}`} />
+                                    {syncingEmails ? 'Syncing...' : 'Sync Now'}
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            {loadingEmails ? (
+                                <div className="flex justify-center py-4">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                                </div>
+                            ) : emails.length > 0 ? (
+                                <div className="space-y-4">
+                                    {emails.map(email => (
+                                        <div
+                                            key={email.id}
+                                            className="p-4 bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-200 transition-all group"
+                                        >
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h4 className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                                    {email.subject || '(No Subject)'}
+                                                </h4>
+                                                <span className="text-[10px] text-gray-400">
+                                                    {new Date(email.timestamp).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-600 line-clamp-2 italic">
+                                                {email.body ? email.body.substring(0, 150) : 'No content available.'}
+                                            </p>
+                                            <div className="mt-3 flex items-center text-[10px] text-gray-400">
+                                                <span className="bg-white px-2 py-0.5 rounded border border-gray-200">
+                                                    From: {email.from_email}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <div className="bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                                        <Mail size={20} className="text-gray-300" />
+                                    </div>
+                                    <p className="text-sm text-gray-500">No emails synced for this client.</p>
+                                    <p className="text-xs text-gray-400 mt-1">Make sure the client's email matches the sender address.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right Sidebar (25%) */}
@@ -427,6 +544,74 @@ const ClientDetailPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Email Modal */}
+            {showEmailModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-lg font-bold text-gray-800">New Email to {client.name}</h3>
+                            <button onClick={() => setShowEmailModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSendEmail} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">To</label>
+                                <input
+                                    type="text"
+                                    value={client.email}
+                                    disabled
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Subject</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={emailForm.subject}
+                                    onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    placeholder="Enter subject line..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Message</label>
+                                <textarea
+                                    required
+                                    rows="10"
+                                    value={emailForm.body}
+                                    onChange={(e) => setEmailForm({ ...emailForm, body: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                                    placeholder="Type your message here..."
+                                ></textarea>
+                            </div>
+                            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEmailModal(false)}
+                                    className="px-6 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={sendingEmail}
+                                    className="flex items-center px-8 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                >
+                                    {sendingEmail ? (
+                                        <RefreshCw size={16} className="mr-2 animate-spin" />
+                                    ) : (
+                                        <Send size={16} className="mr-2" />
+                                    )}
+                                    {sendingEmail ? 'Sending...' : 'Send Message'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

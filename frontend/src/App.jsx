@@ -6,6 +6,7 @@ import ClientsPage from './pages/ClientsPage';
 import ClientDetailPage from './pages/ClientDetailPage';
 import TasksPage from './pages/TasksPage';
 import TaskDetailPage from './pages/TaskDetailPage';
+import SettingsPage from './pages/SettingsPage';
 import api from './api';
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
           <Route path="clients/:id" element={<ClientDetailPage />} />
           <Route path="tasks" element={<TasksPage />} />
           <Route path="tasks/:id" element={<TaskDetailPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route index element={<Navigate to="clients" />} />
         </Route>
       </Routes>
