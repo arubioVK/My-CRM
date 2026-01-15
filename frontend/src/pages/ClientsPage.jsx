@@ -28,6 +28,13 @@ const ClientsPage = () => {
     const [columnOrder, setColumnOrder] = useState(['name', 'email', 'phone', 'address']);
     const [sorting, setSorting] = useState({ field: 'name', direction: 'asc' });
     const [showColumnConfig, setShowColumnConfig] = useState(false);
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
+    const [totalItems, setTotalItems] = useState(0);
+
     const lastRequestRef = React.useRef('');
     const viewsFetchedRef = React.useRef(false);
 
@@ -41,7 +48,7 @@ const ClientsPage = () => {
         const controller = new AbortController();
         fetchClients(controller.signal);
         return () => controller.abort();
-    }, [currentViewId, activeFilters, sorting]);
+    }, [currentViewId, activeFilters, sorting, currentPage, pageSize]);
 
     const handleSelectView = (viewId, viewsList = views) => {
         const view = viewsList.find(v => v.id === viewId);
@@ -51,10 +58,12 @@ const ClientsPage = () => {
             setCurrentViewId(viewId);
             setActiveFilters(null);
             setEditingView(null);
+            setCurrentPage(1); // Reset to first page on view change
         } else {
             setColumnOrder(['name', 'email', 'phone', 'address']);
             setSorting({ field: 'name', direction: 'asc' });
             setCurrentViewId(viewId);
+            setCurrentPage(1);
         }
     };
 
@@ -77,7 +86,9 @@ const ClientsPage = () => {
 
     const fetchClients = async (signal) => {
         const params = {
-            sort: JSON.stringify(sorting)
+            sort: JSON.stringify(sorting),
+            page: currentPage,
+            page_size: pageSize
         };
 
         if (activeFilters) {
@@ -95,7 +106,16 @@ const ClientsPage = () => {
                 params,
                 signal
             });
-            setClients(response.data);
+            if (response.data.results) {
+                setClients(response.data.results);
+                setTotalItems(response.data.count);
+                setTotalPages(Math.ceil(response.data.count / pageSize));
+            } else {
+                // Fallback if pagination is disabled or response format is different
+                setClients(response.data);
+                setTotalItems(response.data.length);
+                setTotalPages(1);
+            }
         } catch (error) {
             if (error.name === 'CanceledError') return;
             console.error('Error fetching clients:', error);
@@ -106,6 +126,7 @@ const ClientsPage = () => {
         setActiveFilters(filters);
         setCurrentViewId(null); // Clear active view when custom filters are applied
         setShowFilterBuilder(false);
+        setCurrentPage(1); // Reset to first page
     };
 
     const handleSaveView = async (name, filters, id = null) => {
@@ -365,10 +386,32 @@ const ClientsPage = () => {
                 </Droppable>
             </DragDropContext>
 
-            <div className="mb-6">
+            <div className="mb-6 flex justify-between items-center">
                 <p className="text-sm text-gray-500">
-                    Showing <span className="font-semibold text-gray-900">{clients.length}</span> clients
+                    Showing <span className="font-semibold text-gray-900">{clients.length}</span> of <span className="font-semibold text-gray-900">{totalItems}</span> clients
                 </p>
+
+                {/* Pagination Controls */}
+                <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-500 mr-2">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+
+                    <button
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className={`p-2 rounded-md ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                        <ChevronRight size={20} />
+                    </button>
+                </div>
             </div>
 
             {showFilterBuilder && (

@@ -11,10 +11,12 @@ from django.http import HttpResponse
 import json
 import pandas as pd
 import io
+from .pagination import StandardResultsSetPagination
 
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         queryset = Client.objects.all()
@@ -154,6 +156,7 @@ class SavedViewViewSet(viewsets.ModelViewSet):
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         queryset = Task.objects.all()
