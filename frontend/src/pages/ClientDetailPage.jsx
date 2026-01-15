@@ -20,7 +20,7 @@ const ClientDetailPage = () => {
     const [loadingEmails, setLoadingEmails] = useState(true);
     const [syncingEmails, setSyncingEmails] = useState(false);
     const [showEmailModal, setShowEmailModal] = useState(false);
-    const [emailForm, setEmailForm] = useState({ subject: '', body: '' });
+    const [emailForm, setEmailForm] = useState({ subject: '', body: '', attachments: [] });
     const [sendingEmail, setSendingEmail] = useState(false);
     const lastFetchedIdRef = React.useRef(null);
 
@@ -115,15 +115,24 @@ const ClientDetailPage = () => {
         e.preventDefault();
         setSendingEmail(true);
         try {
-            const response = await api.post('/crm/emails/send/', {
-                to_email: client.email,
-                subject: emailForm.subject,
-                body: emailForm.body,
-                client_id: id
+            const formData = new FormData();
+            formData.append('to_email', client.email);
+            formData.append('subject', emailForm.subject);
+            formData.append('body', emailForm.body);
+            formData.append('client_id', id);
+
+            emailForm.attachments.forEach(file => {
+                formData.append('attachments', file);
+            });
+
+            const response = await api.post('/crm/emails/send/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             setEmails(prev => [response.data, ...prev]);
             setShowEmailModal(false);
-            setEmailForm({ subject: '', body: '' });
+            setEmailForm({ subject: '', body: '', attachments: [] });
             setSendingEmail(false);
         } catch (error) {
             console.error('Error sending email:', error);
@@ -213,9 +222,66 @@ const ClientDetailPage = () => {
                         </div>
                     </div>
 
-                    <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-100">
-                        <h3 className="text-sm font-semibold text-indigo-700 uppercase tracking-wider mb-2">Activity</h3>
-                        <p className="text-xs text-indigo-600 italic">No recent activity recorded.</p>
+                    {/* Emails / Activity Section */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex justify-between items-center">
+                            <h3 className="text-xs font-bold text-indigo-700 uppercase tracking-wider flex items-center">
+                                <Inbox size={14} className="mr-2" />
+                                Activity / Emails
+                            </h3>
+                            <div className="flex items-center space-x-2">
+                                <button
+                                    onClick={() => setShowEmailModal(true)}
+                                    className="p-1 text-indigo-600 hover:bg-indigo-100 rounded transition-colors"
+                                    title="Send Email"
+                                >
+                                    <Send size={14} />
+                                </button>
+                                <button
+                                    onClick={handleSyncEmails}
+                                    disabled={syncingEmails}
+                                    className="p-1 text-indigo-600 hover:bg-indigo-100 rounded transition-colors disabled:opacity-50"
+                                    title="Sync Now"
+                                >
+                                    <RefreshCw size={14} className={syncingEmails ? 'animate-spin' : ''} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-4 max-h-[500px] overflow-y-auto">
+                            {loadingEmails ? (
+                                <div className="flex justify-center py-4">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+                                </div>
+                            ) : emails.length > 0 ? (
+                                <div className="space-y-3">
+                                    {emails.map(email => (
+                                        <div
+                                            key={email.id}
+                                            className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-200 transition-all group"
+                                        >
+                                            <div className="flex justify-between items-start mb-1">
+                                                <h4 className="text-[11px] font-bold text-gray-900 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                                                    {email.subject || '(No Subject)'}
+                                                </h4>
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 line-clamp-2 italic">
+                                                {email.body ? email.body.substring(0, 100) : 'No content available.'}
+                                            </p>
+                                            <div className="mt-2 flex justify-between items-center text-[9px] text-gray-400">
+                                                <span className="truncate max-w-[100px]">
+                                                    {email.from_email === 'me' ? 'Sent' : 'From: ' + email.from_email}
+                                                </span>
+                                                <span>{new Date(email.timestamp).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-4">
+                                    <p className="text-[11px] text-gray-500 italic">No activity found.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -400,72 +466,7 @@ const ClientDetailPage = () => {
                             )}
                         </div>
                     </div>
-                    {/* Emails Section */}
-                    <div className="mt-8 bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-                                <Inbox size={20} className="mr-2 text-indigo-600" />
-                                Synced Emails
-                            </h2>
-                            <div className="flex items-center space-x-4">
-                                <button
-                                    onClick={() => setShowEmailModal(true)}
-                                    className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800"
-                                >
-                                    <Send size={16} className="mr-1" /> Send Email
-                                </button>
-                                <button
-                                    onClick={handleSyncEmails}
-                                    disabled={syncingEmails}
-                                    className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
-                                >
-                                    <RefreshCw size={16} className={`mr-1 ${syncingEmails ? 'animate-spin' : ''}`} />
-                                    {syncingEmails ? 'Syncing...' : 'Sync Now'}
-                                </button>
-                            </div>
-                        </div>
-                        <div className="p-6">
-                            {loadingEmails ? (
-                                <div className="flex justify-center py-4">
-                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-                                </div>
-                            ) : emails.length > 0 ? (
-                                <div className="space-y-4">
-                                    {emails.map(email => (
-                                        <div
-                                            key={email.id}
-                                            className="p-4 bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-200 transition-all group"
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h4 className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                                    {email.subject || '(No Subject)'}
-                                                </h4>
-                                                <span className="text-[10px] text-gray-400">
-                                                    {new Date(email.timestamp).toLocaleString()}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-gray-600 line-clamp-2 italic">
-                                                {email.body ? email.body.substring(0, 150) : 'No content available.'}
-                                            </p>
-                                            <div className="mt-3 flex items-center text-[10px] text-gray-400">
-                                                <span className="bg-white px-2 py-0.5 rounded border border-gray-200">
-                                                    From: {email.from_email}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8">
-                                    <div className="bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                                        <Mail size={20} className="text-gray-300" />
-                                    </div>
-                                    <p className="text-sm text-gray-500">No emails synced for this client.</p>
-                                    <p className="text-xs text-gray-400 mt-1">Make sure the client's email matches the sender address.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+
                 </div>
 
                 {/* Right Sidebar (25%) */}
@@ -586,6 +587,39 @@ const ClientDetailPage = () => {
                                     className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                                     placeholder="Type your message here..."
                                 ></textarea>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Attachments</label>
+                                <div className="mt-1 flex flex-col space-y-2">
+                                    <input
+                                        type="file"
+                                        multiple
+                                        onChange={(e) => {
+                                            const files = Array.from(e.target.files);
+                                            setEmailForm(prev => ({ ...prev, attachments: [...prev.attachments, ...files] }));
+                                        }}
+                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                    />
+                                    {emailForm.attachments.length > 0 && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {emailForm.attachments.map((file, idx) => (
+                                                <div key={idx} className="flex items-center bg-gray-100 px-2 py-1 rounded-md text-xs text-gray-700">
+                                                    <span className="truncate max-w-[150px]">{file.name}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEmailForm(prev => ({
+                                                            ...prev,
+                                                            attachments: prev.attachments.filter((_, i) => i !== idx)
+                                                        }))}
+                                                        className="ml-2 text-gray-400 hover:text-red-500"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
                                 <button

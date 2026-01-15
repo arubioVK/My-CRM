@@ -28,6 +28,7 @@ const ClientsPage = () => {
     const [columnOrder, setColumnOrder] = useState(['name', 'email', 'phone', 'address']);
     const [sorting, setSorting] = useState({ field: 'name', direction: 'asc' });
     const [showColumnConfig, setShowColumnConfig] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -48,7 +49,7 @@ const ClientsPage = () => {
         const controller = new AbortController();
         fetchClients(controller.signal);
         return () => controller.abort();
-    }, [currentViewId, activeFilters, sorting, currentPage, pageSize]);
+    }, [currentViewId, activeFilters, sorting, currentPage, pageSize, refreshTrigger]);
 
     const handleSelectView = (viewId, viewsList = views) => {
         const view = viewsList.find(v => v.id === viewId);
@@ -72,12 +73,9 @@ const ClientsPage = () => {
             const response = await api.get('/crm/saved-views/', { params: { view_type: 'client' } });
             const viewsData = response.data;
             setViews(viewsData);
-            // Set default view to "All Clients" if available
+            // Set default view to the first one available
             if (!currentViewId && viewsData.length > 0) {
-                const allClientsView = viewsData.find(v => v.name === 'All Clients');
-                if (allClientsView) {
-                    handleSelectView(allClientsView.id, viewsData);
-                }
+                handleSelectView(viewsData[0].id, viewsData);
             }
         } catch (error) {
             console.error('Error fetching views:', error);
@@ -146,6 +144,7 @@ const ClientsPage = () => {
             }
             setActiveFilters(null);
             setShowFilterBuilder(false);
+            setRefreshTrigger(prev => prev + 1);
         } catch (error) {
             console.error('Error saving view:', error);
             alert(error.response?.data?.error || 'Error saving view. Please try again.');
@@ -270,8 +269,8 @@ const ClientsPage = () => {
             await api.delete(`/crm/saved-views/${id}/`);
             setViews(views.filter(v => v.id !== id));
             if (currentViewId === id) {
-                const allClientsView = views.find(v => v.name === 'All Clients');
-                setCurrentViewId(allClientsView ? allClientsView.id : null);
+                const remainingViews = views.filter(v => v.id !== id);
+                setCurrentViewId(remainingViews.length > 0 ? remainingViews[0].id : null);
             }
         } catch (error) {
             alert(error.response?.data?.error || 'Error deleting view');

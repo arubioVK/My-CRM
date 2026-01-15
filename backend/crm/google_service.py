@@ -109,18 +109,40 @@ class GoogleService:
         
         return synced_emails
 
-    def send_email(self, to_email, subject, body):
+    def send_email(self, to_email, subject, body, attachments=None):
         if not self.credentials:
             return None
 
         service = build('gmail', 'v1', credentials=self.credentials)
         
+        from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders
+        import mimetypes
         import base64
 
-        message = MIMEText(body)
-        message['to'] = to_email
-        message['subject'] = subject
+        if attachments:
+            message = MIMEMultipart()
+            message['to'] = to_email
+            message['subject'] = subject
+            message.attach(MIMEText(body))
+
+            for attachment in attachments:
+                content_type, encoding = mimetypes.guess_type(attachment.name)
+                if content_type is None or encoding is not None:
+                    content_type = 'application/octet-stream'
+                
+                main_type, sub_type = content_type.split('/', 1)
+                part = MIMEBase(main_type, sub_type)
+                part.set_payload(attachment.read())
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', f'attachment; filename="{attachment.name}"')
+                message.attach(part)
+        else:
+            message = MIMEText(body)
+            message['to'] = to_email
+            message['subject'] = subject
         
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
         

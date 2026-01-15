@@ -271,11 +271,6 @@ const TaskDetailPage = () => {
                             </div>
                         </div>
                     </div>
-
-                    <div className="bg-amber-50 p-6 rounded-lg border border-amber-100">
-                        <h3 className="text-sm font-semibold text-amber-700 uppercase tracking-wider mb-2">Notes</h3>
-                        <p className="text-xs text-amber-600 italic">No additional notes for this task.</p>
-                    </div>
                 </div>
             </div>
         </div>

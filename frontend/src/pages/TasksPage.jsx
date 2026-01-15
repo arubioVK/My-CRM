@@ -7,6 +7,7 @@ import { Filter, X, ChevronLeft, ChevronRight, GripVertical, ArrowUp, ArrowDown,
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const ALL_COLUMNS = [
+    { id: 'completed', label: 'Done', type: 'boolean' },
     { id: 'title', label: 'Title', type: 'string' },
     {
         id: 'status', label: 'Status', type: 'select', options: [
@@ -27,6 +28,7 @@ const ALL_COLUMNS = [
     { id: 'assigned_to_name', label: 'Assigned To', type: 'string' },
     { id: 'created_at', label: 'Created At', type: 'date' },
     { id: 'updated_at', label: 'Updated At', type: 'date' },
+    { id: 'completed_at', label: 'Completed At', type: 'date' },
 ];
 
 const TasksPage = () => {
@@ -40,9 +42,10 @@ const TasksPage = () => {
     const [editingView, setEditingView] = useState(null);
     const [renamingViewId, setRenamingViewId] = useState(null);
     const [renamingValue, setRenamingValue] = useState('');
-    const [columnOrder, setColumnOrder] = useState(['title', 'status', 'priority', 'due_date', 'client_name']);
+    const [columnOrder, setColumnOrder] = useState(['completed', 'title', 'status', 'priority', 'due_date', 'client_name']);
     const [sorting, setSorting] = useState({ field: 'due_date', direction: 'asc' });
     const [showColumnConfig, setShowColumnConfig] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -63,7 +66,7 @@ const TasksPage = () => {
         const controller = new AbortController();
         fetchTasks(controller.signal);
         return () => controller.abort();
-    }, [currentViewId, activeFilters, sorting, currentPage, pageSize]);
+    }, [currentViewId, activeFilters, sorting, currentPage, pageSize, refreshTrigger]);
 
     useEffect(() => {
         const clientId = searchParams.get('client_id');
@@ -80,14 +83,14 @@ const TasksPage = () => {
     const handleSelectView = (viewId, viewsList = views) => {
         const view = viewsList.find(v => v.id === viewId);
         if (view) {
-            setColumnOrder(view.column_order && view.column_order.length > 0 ? view.column_order : ['title', 'status', 'priority', 'due_date', 'client_name']);
+            setColumnOrder(view.column_order && view.column_order.length > 0 ? view.column_order : ['completed', 'title', 'status', 'priority', 'due_date', 'client_name']);
             setSorting(view.sorting && view.sorting.field ? view.sorting : { field: 'due_date', direction: 'asc' });
             setCurrentViewId(viewId);
             setActiveFilters(null);
             setEditingView(null);
             setCurrentPage(1);
         } else {
-            setColumnOrder(['title', 'status', 'priority', 'due_date', 'client_name']);
+            setColumnOrder(['completed', 'title', 'status', 'priority', 'due_date', 'client_name']);
             setSorting({ field: 'due_date', direction: 'asc' });
             setCurrentViewId(viewId);
             setCurrentPage(1);
@@ -101,10 +104,7 @@ const TasksPage = () => {
             setViews(viewsData);
             // Only set default view if no client_id is present in URL
             if (!currentViewId && viewsData.length > 0 && !searchParams.get('client_id')) {
-                const allTasksView = viewsData.find(v => v.name === 'All Tasks');
-                if (allTasksView) {
-                    handleSelectView(allTasksView.id, viewsData);
-                }
+                handleSelectView(viewsData[0].id, viewsData);
             }
         } catch (error) {
             console.error('Error fetching views:', error);
@@ -148,6 +148,18 @@ const TasksPage = () => {
         }
     };
 
+    const handleToggleDone = async (e, task) => {
+        e.stopPropagation();
+        const newStatus = task.status === 'done' ? 'todo' : 'done';
+        try {
+            const response = await api.patch(`/crm/tasks/${task.id}/`, { status: newStatus });
+            setTasks(tasks.map(t => t.id === task.id ? { ...t, status: response.data.status } : t));
+        } catch (error) {
+            console.error('Error toggling task status:', error);
+            alert('Error updating task status');
+        }
+    };
+
     const handleApplyFilters = (filters) => {
         setActiveFilters(filters);
         setCurrentViewId(null);
@@ -172,6 +184,7 @@ const TasksPage = () => {
             }
             setActiveFilters(null);
             setShowFilterBuilder(false);
+            setRefreshTrigger(prev => prev + 1);
         } catch (error) {
             console.error('Error saving view:', error);
             alert(error.response?.data?.error || 'Error saving view. Please try again.');
@@ -267,8 +280,8 @@ const TasksPage = () => {
             await api.delete(`/crm/saved-views/${id}/`);
             setViews(views.filter(v => v.id !== id));
             if (currentViewId === id) {
-                const allTasksView = views.find(v => v.name === 'All Tasks');
-                setCurrentViewId(allTasksView ? allTasksView.id : null);
+                const remainingViews = views.filter(v => v.id !== id);
+                setCurrentViewId(remainingViews.length > 0 ? remainingViews[0].id : null);
             }
         } catch (error) {
             alert(error.response?.data?.error || 'Error deleting view');
@@ -438,6 +451,7 @@ const TasksPage = () => {
                             ]
                         },
                         { label: 'Due Date', value: 'due_date', type: 'date' },
+                        { label: 'Completed At', value: 'completed_at', type: 'date' },
                         { label: 'Client', value: 'client', type: 'string' },
                         { label: 'Assigned To', value: 'assigned_to', type: 'user' },
                         { label: 'Created At', value: 'created_at', type: 'date' },
@@ -543,7 +557,17 @@ const TasksPage = () => {
                                 >
                                     {columnOrder.map((column) => (
                                         <td key={column} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {column === 'title' ? (
+                                            {column === 'completed' ? (
+                                                <div className="flex items-center justify-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={task.status === 'done'}
+                                                        onChange={(e) => handleToggleDone(e, task)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                                                    />
+                                                </div>
+                                            ) : column === 'title' ? (
                                                 <span className="font-medium text-gray-900">{task.title}</span>
                                             ) : column === 'client_name' ? (
                                                 <button
@@ -569,8 +593,8 @@ const TasksPage = () => {
                                                     }`}>
                                                     {task.priority}
                                                 </span>
-                                            ) : column === 'due_date' ? (
-                                                task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'
+                                            ) : column === 'due_date' || column === 'completed_at' || column === 'created_at' || column === 'updated_at' ? (
+                                                task[column] ? new Date(task[column]).toLocaleDateString() : '-'
                                             ) : (
                                                 task[column]
                                             )}

@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, parsers
 from rest_framework.response import Response
 from django.db.models import Q
 from django.utils.decorators import method_decorator
@@ -17,6 +17,7 @@ from google_auth_oauthlib.flow import Flow
 from .models import GoogleToken, Email, Note, Client, SavedView, Task
 from .serializers import GoogleTokenSerializer, EmailSerializer, NoteSerializer, ClientSerializer, SavedViewSerializer, TaskSerializer
 import datetime
+from django.utils import timezone
 
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
@@ -267,7 +268,22 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Default assigned_to to current user if not provided?
         # For now, just save as is.
-        serializer.save()
+        instance = serializer.save()
+        if instance.status == 'done':
+            instance.completed_at = timezone.now()
+            instance.save()
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        old_status = instance.status
+        new_status = self.request.data.get('status', old_status)
+        
+        if old_status != 'done' and new_status == 'done':
+            serializer.save(completed_at=timezone.now())
+        elif old_status == 'done' and new_status != 'done':
+            serializer.save(completed_at=None)
+        else:
+            serializer.save()
 
 class NoteViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all()
@@ -286,6 +302,7 @@ class NoteViewSet(viewsets.ModelViewSet):
 class EmailViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Email.objects.all()
     serializer_class = EmailSerializer
+    parser_classes = (parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser)
 
     def get_queryset(self):
         queryset = Email.objects.filter(user=self.request.user)
@@ -306,12 +323,13 @@ class EmailViewSet(viewsets.ReadOnlyModelViewSet):
         subject = request.data.get('subject')
         body = request.data.get('body')
         client_id = request.data.get('client_id')
+        attachments = request.FILES.getlist('attachments')
 
         if not all([to_email, subject, body]):
             return Response({"error": "Required fields missing"}, status=400)
 
         service = GoogleService(request.user)
-        sent_message = service.send_email(to_email, subject, body)
+        sent_message = service.send_email(to_email, subject, body, attachments=attachments)
 
         if sent_message:
             # Create Email record in DB
