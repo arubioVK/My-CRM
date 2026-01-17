@@ -9,6 +9,8 @@ import TaskDetailPage from './pages/TaskDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import TemplatesPage from './pages/Marketing/TemplatesPage';
 import TemplateDetailPage from './pages/Marketing/TemplateDetailPage';
+import WorkflowsPage from './pages/Automations/WorkflowsPage';
+import WorkflowBuilder from './pages/Automations/WorkflowBuilder';
 import api from './api';
 
 function App() {
@@ -54,6 +56,9 @@ function App() {
           <Route path="marketing/templates" element={<TemplatesPage />} />
           <Route path="marketing/templates/new" element={<TemplateDetailPage />} />
           <Route path="marketing/templates/:id" element={<TemplateDetailPage />} />
+          <Route path="automations/workflows" element={<WorkflowsPage />} />
+          <Route path="automations/workflows/new" element={<WorkflowBuilder />} />
+          <Route path="automations/workflows/:id" element={<WorkflowBuilder />} />
           <Route index element={<Navigate to="clients" />} />
         </Route>
       </Routes>

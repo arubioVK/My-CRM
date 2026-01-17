@@ -16,6 +16,9 @@ class ClientViewSet(viewsets.ModelViewSet):
     serializer_class = ClientSerializer
     pagination_class = StandardResultsSetPagination
 
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
     def get_queryset(self):
         queryset = Client.objects.all()
         

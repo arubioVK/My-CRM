@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ChevronLeft, ChevronRight, LayoutDashboard, Briefcase, CheckSquare, Mail, Megaphone } from 'lucide-react';
+import { Users, ChevronLeft, ChevronRight, LayoutDashboard, Briefcase, CheckSquare, Mail, Megaphone, GitMerge } from 'lucide-react';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
     const [crmOpen, setCrmOpen] = useState(true);
     const [marketingOpen, setMarketingOpen] = useState(false);
+    const [automationsOpen, setAutomationsOpen] = useState(false);
     const [showPopover, setShowPopover] = useState(false);
     const [popoverType, setPopoverType] = useState(null); // 'crm' or 'marketing'
     const sidebarRef = React.useRef(null);
@@ -34,6 +35,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             setMarketingOpen(!marketingOpen);
         } else {
             setPopoverType('marketing');
+            setShowPopover(!showPopover);
+        }
+    };
+
+    const handleAutomationsClick = () => {
+        if (isOpen) {
+            setAutomationsOpen(!automationsOpen);
+        } else {
+            setPopoverType('automations');
             setShowPopover(!showPopover);
         }
     };
@@ -164,6 +174,58 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                                         >
                                             <Mail size={16} />
                                             <span className="ml-3">Templates</span>
+                                        </Link>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+                    </li>
+
+                    {/* Automations Module */}
+                    <li className="relative">
+                        <div
+                            className={`flex items-center px-4 py-3 cursor-pointer hover:bg-gray-800 ${!isOpen && 'justify-center'}`}
+                            onClick={handleAutomationsClick}
+                        >
+                            <GitMerge size={20} />
+                            {isOpen && <span className="ml-3 flex-1">Automations</span>}
+                            {isOpen && (
+                                <span className={`transform transition-transform ${automationsOpen ? 'rotate-90' : ''}`}>
+                                    <ChevronRight size={16} />
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Submenu for Expanded Sidebar */}
+                        {isOpen && automationsOpen && (
+                            <ul className="pl-12 space-y-1 mt-1">
+                                <li>
+                                    <Link to="/automations/workflows" className="flex items-center py-2 px-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md">
+                                        <GitMerge size={18} />
+                                        <span className="ml-3">Workflows</span>
+                                    </Link>
+                                </li>
+                            </ul>
+                        )}
+
+                        {/* Popover for Collapsed Sidebar */}
+                        {!isOpen && showPopover && popoverType === 'automations' && (
+                            <div
+                                className="absolute left-full top-0 ml-2 w-48 bg-gray-800 rounded-lg shadow-xl py-2 z-50 border border-gray-700"
+                            >
+                                <div className="absolute top-4 -left-1.5 w-3 h-3 bg-gray-800 border-l border-b border-gray-700 transform rotate-45" />
+                                <div className="px-4 py-2 border-b border-gray-700 mb-1">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Automations</span>
+                                </div>
+                                <ul>
+                                    <li>
+                                        <Link
+                                            to="/automations/workflows"
+                                            className="flex items-center py-2 px-4 text-gray-300 hover:text-white hover:bg-gray-700"
+                                            onClick={() => setShowPopover(false)}
+                                        >
+                                            <GitMerge size={16} />
+                                            <span className="ml-3">Workflows</span>
                                         </Link>
                                     </li>
                                 </ul>

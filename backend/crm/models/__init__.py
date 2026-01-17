@@ -4,3 +4,4 @@ from .notes import Note
 from .emails import Email, EmailTemplate
 from .tokens import GoogleToken
 from .user_config import UserConfig
+from .workflows import Workflow

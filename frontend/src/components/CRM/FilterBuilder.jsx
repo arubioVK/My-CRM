@@ -58,7 +58,8 @@ const FilterBuilder = ({
     currentViewId,
     isSystemView,
     fields = [],
-    defaultField = 'name'
+    defaultField = 'name',
+    hideSaveView = false
 }) => {
     const [filterData, setFilterData] = useState(() => {
         const rawFilters = initialView?.filters || initialFilters;
@@ -435,67 +436,71 @@ const FilterBuilder = ({
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 mb-6">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Filter Builder</h3>
-                <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                    <X size={20} />
-                </button>
-            </div>
-
-            <div className="mb-6">
-                {renderGroup(filterData, true)}
-            </div>
-
-            <div className="flex justify-end items-center border-t border-gray-100 pt-4">
-                <div className="flex space-x-3">
-                    <button
-                        onClick={handleApply}
-                        className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-200"
-                    >
-                        Apply Filters
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
+                    <h3 className="text-lg font-semibold text-gray-800">Filter Builder</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                        <X size={24} />
                     </button>
-                    {currentViewId && !initialView && !isSystemView && (
+                </div>
+
+                <div className="p-6">
+                    {renderGroup(filterData, true)}
+                </div>
+
+                <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end items-center sticky bottom-0 z-10">
+                    <div className="flex space-x-3">
                         <button
-                            onClick={() => onSave(null, filterData, currentViewId)}
-                            className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-200 flex items-center"
-                            title="Update current view with these filters"
+                            onClick={handleApply}
+                            className={`${hideSaveView ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm`}
                         >
-                            <RefreshCw size={16} className="mr-2" /> Update Current View
+                            {hideSaveView ? 'Apply Conditions' : 'Apply Filters'}
                         </button>
-                    )}
-                    <button
-                        onClick={() => setShowSave(true)}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 flex items-center"
-                    >
-                        <Save size={16} className="mr-2" /> {initialView ? 'Update View' : 'Save as View'}
-                    </button>
+                        {!hideSaveView && currentViewId && !initialView && !isSystemView && (
+                            <button
+                                onClick={() => onSave(null, filterData, currentViewId)}
+                                className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-200 flex items-center transition-colors"
+                                title="Update current view with these filters"
+                            >
+                                <RefreshCw size={16} className="mr-2" /> Update Current View
+                            </button>
+                        )}
+                        {!hideSaveView && (
+                            <button
+                                onClick={() => setShowSave(true)}
+                                className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 flex items-center transition-colors shadow-sm"
+                            >
+                                <Save size={16} className="mr-2" /> {initialView ? 'Update View' : 'Save as View'}
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            {showSave && (
-                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center space-x-3">
-                    <input
-                        type="text"
-                        value={viewName}
-                        onChange={(e) => setViewName(e.target.value)}
-                        placeholder="View Name (e.g. High Priority)"
-                        className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
-                    />
-                    <button
-                        onClick={handleSave}
-                        className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700"
-                    >
-                        {initialView ? 'Confirm Update' : 'Confirm Save'}
-                    </button>
-                    <button
-                        onClick={() => setShowSave(false)}
-                        className="text-gray-500 hover:text-gray-700 text-sm"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            )}
+                {showSave && (
+                    <div className="p-4 border-t border-gray-100 flex items-center space-x-3 bg-gray-50">
+                        <input
+                            type="text"
+                            value={viewName}
+                            onChange={(e) => setViewName(e.target.value)}
+                            placeholder="View Name (e.g. High Priority)"
+                            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        />
+                        <button
+                            onClick={handleSave}
+                            className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
+                        >
+                            {initialView ? 'Confirm Update' : 'Confirm Save'}
+                        </button>
+                        <button
+                            onClick={() => setShowSave(false)}
+                            className="text-gray-500 hover:text-gray-700 text-sm"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

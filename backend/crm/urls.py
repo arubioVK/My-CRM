@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ClientViewSet, SavedViewViewSet, TaskViewSet, NoteViewSet, GoogleAuthView, GoogleCallbackView, EmailViewSet, EmailTemplateViewSet, UserConfigView
+from .views import ClientViewSet, SavedViewViewSet, TaskViewSet, NoteViewSet, GoogleAuthView, GoogleCallbackView, EmailViewSet, EmailTemplateViewSet, UserConfigView, WorkflowViewSet
 
 router = DefaultRouter()
 router.register(r'clients', ClientViewSet, basename='client')
@@ -11,6 +11,7 @@ router.register(r'google/auth', GoogleAuthView, basename='google-auth')
 router.register(r'google/callback', GoogleCallbackView, basename='google-callback')
 router.register(r'emails', EmailViewSet, basename='email')
 router.register(r'email-templates', EmailTemplateViewSet, basename='email-template')
+router.register(r'workflows', WorkflowViewSet, basename='workflow')
 
 urlpatterns = [
     path('config/', UserConfigView.as_view(), name='user-config'),
