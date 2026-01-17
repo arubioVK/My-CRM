@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { Save, ArrowLeft, Info, Copy, Plus } from 'lucide-react';
 
 const KEYWORDS = [
@@ -21,7 +23,7 @@ const TemplateDetailPage = () => {
     });
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const bodyRef = useRef(null);
+    const quillRef = useRef(null);
 
     useEffect(() => {
         if (id) {
@@ -61,23 +63,23 @@ const TemplateDetailPage = () => {
     };
 
     const insertKeyword = (keyword) => {
-        const textarea = bodyRef.current;
-        if (!textarea) return;
+        if (!quillRef.current) return;
+        const editor = quillRef.current.getEditor();
+        const cursorPosition = editor.getSelection()?.index || 0;
+        editor.insertText(cursorPosition, keyword);
+        editor.setSelection(cursorPosition + keyword.length);
+        setFormData({ ...formData, body: editor.root.innerHTML });
+    };
 
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const text = textarea.value;
-        const before = text.substring(0, start);
-        const after = text.substring(end);
-
-        const newBody = before + keyword + after;
-        setFormData({ ...formData, body: newBody });
-
-        // Set cursor position after inserted keyword
-        setTimeout(() => {
-            textarea.focus();
-            textarea.setSelectionRange(start + keyword.length, start + keyword.length);
-        }, 0);
+    const quillModules = {
+        toolbar: [
+            [{ 'header': [1, 2, false] }],
+            [{ 'size': ['small', false, 'large', 'huge'] }],
+            ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            ['link'],
+            ['clean']
+        ],
     };
 
     if (loading) {
@@ -147,15 +149,17 @@ const TemplateDetailPage = () => {
                                     Email Body
                                     <span className="text-xs text-gray-400 font-normal">Click a keyword on the right to insert</span>
                                 </label>
-                                <textarea
-                                    ref={bodyRef}
-                                    rows={15}
-                                    value={formData.body}
-                                    onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-                                    placeholder="Write your email content here..."
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm leading-relaxed"
-                                    required
-                                />
+                                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                    <ReactQuill
+                                        ref={quillRef}
+                                        theme="snow"
+                                        value={formData.body}
+                                        onChange={(content) => setFormData({ ...formData, body: content })}
+                                        modules={quillModules}
+                                        className="h-96"
+                                        placeholder="Write your email content here..."
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>

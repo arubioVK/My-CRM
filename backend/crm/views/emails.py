@@ -31,13 +31,22 @@ class EmailViewSet(viewsets.ReadOnlyModelViewSet):
         subject = request.data.get('subject')
         body = request.data.get('body')
         client_id = request.data.get('client_id')
+        include_signature = request.data.get('include_signature', False)
         attachments = request.FILES.getlist('attachments')
 
         if not all([to_email, subject, body]):
             return Response({"error": "Required fields missing"}, status=400)
 
+        final_body = body
+        if include_signature:
+            from crm.models.user_config import UserConfig
+            config = UserConfig.objects.filter(user=request.user).first()
+            if config and config.email_signature:
+                # Add a couple of line breaks and the signature
+                final_body = f"{body}<br><br>{config.email_signature}"
+
         service = GoogleService(request.user)
-        sent_message = service.send_email(to_email, subject, body, attachments=attachments)
+        sent_message = service.send_email(to_email, subject, final_body, attachments=attachments)
 
         if sent_message:
             # Create Email record in DB

@@ -1,0 +1,8 @@
+**/node_modules
+**/__pycache__
+**/.venv
+**/.git
+**/.gitignore
+**/dist
+**/package-lock.json
+postgres_data

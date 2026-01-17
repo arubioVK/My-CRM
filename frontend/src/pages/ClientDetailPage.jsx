@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { Lock, Unlock, Save, X, ArrowLeft, User, Mail, Phone, MapPin, CheckSquare, Plus, ChevronRight, StickyNote, Send, Trash2, RefreshCw, Inbox } from 'lucide-react';
 const ClientDetailPage = () => {
     const { id } = useParams();
@@ -20,7 +22,7 @@ const ClientDetailPage = () => {
     const [loadingEmails, setLoadingEmails] = useState(true);
     const [syncingEmails, setSyncingEmails] = useState(false);
     const [showEmailModal, setShowEmailModal] = useState(false);
-    const [emailForm, setEmailForm] = useState({ subject: '', body: '', attachments: [] });
+    const [emailForm, setEmailForm] = useState({ subject: '', body: '', attachments: [], includeSignature: true });
     const [sendingEmail, setSendingEmail] = useState(false);
     const [templates, setTemplates] = useState([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -152,6 +154,16 @@ const ClientDetailPage = () => {
         setSelectedTemplateId(templateId);
     };
 
+    const quillModules = {
+        toolbar: [
+            [{ 'header': [1, 2, false] }],
+            ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            ['link'],
+            ['clean']
+        ],
+    };
+
     const handleSendEmail = async (e) => {
         e.preventDefault();
         setSendingEmail(true);
@@ -161,6 +173,7 @@ const ClientDetailPage = () => {
             formData.append('subject', emailForm.subject);
             formData.append('body', emailForm.body);
             formData.append('client_id', id);
+            formData.append('include_signature', emailForm.includeSignature);
 
             emailForm.attachments.forEach(file => {
                 formData.append('attachments', file);
@@ -173,7 +186,7 @@ const ClientDetailPage = () => {
             });
             setEmails(prev => [response.data, ...prev]);
             setShowEmailModal(false);
-            setEmailForm({ subject: '', body: '', attachments: [] });
+            setEmailForm({ subject: '', body: '', attachments: [], includeSignature: true });
             setSendingEmail(false);
         } catch (error) {
             console.error('Error sending email:', error);
@@ -635,14 +648,27 @@ const ClientDetailPage = () => {
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Message</label>
-                                <textarea
-                                    required
-                                    rows="10"
-                                    value={emailForm.body}
-                                    onChange={(e) => setEmailForm({ ...emailForm, body: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                                    placeholder="Type your message here..."
-                                ></textarea>
+                                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={emailForm.body}
+                                        onChange={(content) => setEmailForm({ ...emailForm, body: content })}
+                                        modules={quillModules}
+                                        className="h-64"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2 py-2 pt-12">
+                                <input
+                                    type="checkbox"
+                                    id="includeSignature"
+                                    checked={emailForm.includeSignature}
+                                    onChange={(e) => setEmailForm({ ...emailForm, includeSignature: e.target.checked })}
+                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                />
+                                <label htmlFor="includeSignature" className="text-sm text-gray-700 font-medium cursor-pointer">
+                                    Include automatic signature
+                                </label>
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Attachments</label>

@@ -126,7 +126,7 @@ class GoogleService:
             message = MIMEMultipart()
             message['to'] = to_email
             message['subject'] = subject
-            message.attach(MIMEText(body))
+            message.attach(MIMEText(body, 'html'))
 
             for attachment in attachments:
                 content_type, encoding = mimetypes.guess_type(attachment.name)
@@ -140,7 +140,7 @@ class GoogleService:
                 part.add_header('Content-Disposition', f'attachment; filename="{attachment.name}"')
                 message.attach(part)
         else:
-            message = MIMEText(body)
+            message = MIMEText(body, 'html')
             message['to'] = to_email
             message['subject'] = subject
         
