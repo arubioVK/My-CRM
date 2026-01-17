@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ChevronLeft, ChevronRight, LayoutDashboard, Briefcase, CheckSquare } from 'lucide-react';
+import { Users, ChevronLeft, ChevronRight, LayoutDashboard, Briefcase, CheckSquare, Mail, Megaphone } from 'lucide-react';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
     const [crmOpen, setCrmOpen] = useState(true);
+    const [marketingOpen, setMarketingOpen] = useState(false);
     const [showPopover, setShowPopover] = useState(false);
+    const [popoverType, setPopoverType] = useState(null); // 'crm' or 'marketing'
     const sidebarRef = React.useRef(null);
 
     // Close popover when clicking outside the sidebar
@@ -22,6 +24,16 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         if (isOpen) {
             setCrmOpen(!crmOpen);
         } else {
+            setPopoverType('crm');
+            setShowPopover(!showPopover);
+        }
+    };
+
+    const handleMarketingClick = () => {
+        if (isOpen) {
+            setMarketingOpen(!marketingOpen);
+        } else {
+            setPopoverType('marketing');
             setShowPopover(!showPopover);
         }
     };
@@ -100,6 +112,58 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                                         >
                                             <CheckSquare size={16} />
                                             <span className="ml-3">Tasks</span>
+                                        </Link>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+                    </li>
+
+                    {/* Marketing Module */}
+                    <li className="relative">
+                        <div
+                            className={`flex items-center px-4 py-3 cursor-pointer hover:bg-gray-800 ${!isOpen && 'justify-center'}`}
+                            onClick={handleMarketingClick}
+                        >
+                            <Megaphone size={20} />
+                            {isOpen && <span className="ml-3 flex-1">Marketing</span>}
+                            {isOpen && (
+                                <span className={`transform transition-transform ${marketingOpen ? 'rotate-90' : ''}`}>
+                                    <ChevronRight size={16} />
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Submenu for Expanded Sidebar */}
+                        {isOpen && marketingOpen && (
+                            <ul className="pl-12 space-y-1 mt-1">
+                                <li>
+                                    <Link to="/marketing/templates" className="flex items-center py-2 px-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md">
+                                        <Mail size={18} />
+                                        <span className="ml-3">Templates</span>
+                                    </Link>
+                                </li>
+                            </ul>
+                        )}
+
+                        {/* Popover for Collapsed Sidebar */}
+                        {!isOpen && showPopover && popoverType === 'marketing' && (
+                            <div
+                                className="absolute left-full top-0 ml-2 w-48 bg-gray-800 rounded-lg shadow-xl py-2 z-50 border border-gray-700"
+                            >
+                                <div className="absolute top-4 -left-1.5 w-3 h-3 bg-gray-800 border-l border-b border-gray-700 transform rotate-45" />
+                                <div className="px-4 py-2 border-b border-gray-700 mb-1">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Marketing</span>
+                                </div>
+                                <ul>
+                                    <li>
+                                        <Link
+                                            to="/marketing/templates"
+                                            className="flex items-center py-2 px-4 text-gray-300 hover:text-white hover:bg-gray-700"
+                                            onClick={() => setShowPopover(false)}
+                                        >
+                                            <Mail size={16} />
+                                            <span className="ml-3">Templates</span>
                                         </Link>
                                     </li>
                                 </ul>

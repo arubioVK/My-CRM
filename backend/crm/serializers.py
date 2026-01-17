@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Client, SavedView, Task, Note, GoogleToken, Email
+from .models import Client, SavedView, Task, Note, GoogleToken, Email, EmailTemplate
 from django.contrib.auth.models import User
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -37,3 +37,9 @@ class EmailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Email
         fields = '__all__'
+
+class EmailTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailTemplate
+        fields = '__all__'
+        read_only_fields = ['owner']

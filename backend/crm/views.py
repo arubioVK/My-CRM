@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
-from .models import Client, SavedView, Task, Note
-from .serializers import ClientSerializer, SavedViewSerializer, TaskSerializer, NoteSerializer
+from .models import Client, SavedView, Task, Note, EmailTemplate
+from .serializers import ClientSerializer, SavedViewSerializer, TaskSerializer, NoteSerializer, EmailTemplateSerializer
 from .utils import build_q_object
 from rest_framework.decorators import action
 from django.http import HttpResponse
@@ -15,7 +15,7 @@ from .pagination import StandardResultsSetPagination
 from .google_service import GoogleService
 from google_auth_oauthlib.flow import Flow
 from .models import GoogleToken, Email, Note, Client, SavedView, Task
-from .serializers import GoogleTokenSerializer, EmailSerializer, NoteSerializer, ClientSerializer, SavedViewSerializer, TaskSerializer
+from .serializers import GoogleTokenSerializer, EmailSerializer, NoteSerializer, ClientSerializer, SavedViewSerializer, TaskSerializer, EmailTemplateSerializer
 import datetime
 from django.utils import timezone
 
@@ -392,3 +392,13 @@ class GoogleCallbackView(viewsets.ViewSet):
         )
 
         return Response({"status": "success"})
+
+
+class EmailTemplateViewSet(viewsets.ModelViewSet):
+    serializer_class = EmailTemplateSerializer
+
+    def get_queryset(self):
+        return EmailTemplate.objects.filter(owner=self.request.user).order_by('-updated_at')
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)

@@ -22,6 +22,8 @@ const ClientDetailPage = () => {
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [emailForm, setEmailForm] = useState({ subject: '', body: '', attachments: [] });
     const [sendingEmail, setSendingEmail] = useState(false);
+    const [templates, setTemplates] = useState([]);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const lastFetchedIdRef = React.useRef(null);
 
     useEffect(() => {
@@ -31,6 +33,7 @@ const ClientDetailPage = () => {
         fetchTasks();
         fetchNotes();
         fetchEmails();
+        fetchTemplates();
     }, [id]);
 
     const fetchTasks = async () => {
@@ -109,6 +112,44 @@ const ClientDetailPage = () => {
             alert('Error syncing emails. Please make sure your Google account is connected in Settings.');
             setSyncingEmails(false);
         }
+    };
+
+    const fetchTemplates = async () => {
+        try {
+            const response = await api.get('/crm/email-templates/');
+            setTemplates(response.data);
+        } catch (error) {
+            console.error('Error fetching templates:', error);
+        }
+    };
+
+    const handleApplyTemplate = (templateId) => {
+        const template = templates.find(t => t.id === parseInt(templateId));
+        if (!template) return;
+
+        let subject = template.subject;
+        let body = template.body;
+
+        const replacements = {
+            '{{client_name}}': client.name || '',
+            '{{client_email}}': client.email || '',
+            '{{client_phone}}': client.phone || '',
+            '{{client_address}}': client.address || '',
+            '{{date}}': new Date().toLocaleDateString()
+        };
+
+        Object.keys(replacements).forEach(key => {
+            const value = replacements[key];
+            subject = subject.split(key).join(value);
+            body = body.split(key).join(value);
+        });
+
+        setEmailForm({
+            ...emailForm,
+            subject: subject,
+            body: body
+        });
+        setSelectedTemplateId(templateId);
     };
 
     const handleSendEmail = async (e) => {
@@ -557,14 +598,29 @@ const ClientDetailPage = () => {
                             </button>
                         </div>
                         <form onSubmit={handleSendEmail} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">To</label>
-                                <input
-                                    type="text"
-                                    value={client.email}
-                                    disabled
-                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 text-sm"
-                                />
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">To</label>
+                                    <input
+                                        type="text"
+                                        value={client.email}
+                                        disabled
+                                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 text-sm"
+                                    />
+                                </div>
+                                <div className="w-1/3">
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Use Template</label>
+                                    <select
+                                        value={selectedTemplateId}
+                                        onChange={(e) => handleApplyTemplate(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                                    >
+                                        <option value="">Select a template...</option>
+                                        {templates.map(t => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Subject</label>
