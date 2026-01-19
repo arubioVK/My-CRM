@@ -36,7 +36,23 @@ class UserView(APIView):
         response_data['csrfToken'] = get_token(request)
         return Response(response_data)
 
-class UserListView(APIView):
-    def get(self, request):
-        users = User.objects.all().values('id', 'username')
-        return Response(list(users))
+from rest_framework import viewsets
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('id')
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def perform_create(self, serializer):
+        password = self.request.data.get('password')
+        user = serializer.save()
+        if password:
+            user.set_password(password)
+            user.save()
+
+    def perform_update(self, serializer):
+        password = self.request.data.get('password')
+        user = serializer.save()
+        if password:
+            user.set_password(password)
+            user.save()

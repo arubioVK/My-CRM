@@ -95,7 +95,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                         )}
 
                         {/* Popover for Collapsed Sidebar */}
-                        {!isOpen && showPopover && (
+                        {!isOpen && showPopover && popoverType === 'crm' && (
                             <div
                                 className="absolute left-full top-0 ml-2 w-48 bg-gray-800 rounded-lg shadow-xl py-2 z-50 border border-gray-700"
                             >

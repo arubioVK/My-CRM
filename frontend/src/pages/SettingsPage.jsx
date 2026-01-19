@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import api from '../api';
-import { Settings as SettingsIcon, Mail, Globe, Shield, CheckCircle2, AlertCircle, ExternalLink, Save } from 'lucide-react';
+import { Settings as SettingsIcon, Mail, Globe, Shield, CheckCircle2, AlertCircle, ExternalLink, Save, Users } from 'lucide-react';
 
 const SettingsPage = () => {
     const [searchParams] = useSearchParams();
@@ -14,6 +14,19 @@ const SettingsPage = () => {
     const [activeTab, setActiveTab] = useState('email');
     const [signature, setSignature] = useState('');
     const [savingSignature, setSavingSignature] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [users, setUsers] = useState([]);
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [userForm, setUserForm] = useState({
+        username: '',
+        email: '',
+        first_name: '',
+        last_name: '',
+        password: '',
+        is_staff: false,
+        is_superuser: false
+    });
 
     useEffect(() => {
         const code = searchParams.get('code');
@@ -22,7 +35,96 @@ const SettingsPage = () => {
         }
         checkConnection();
         fetchUserConfig();
+        fetchCurrentUser();
     }, [searchParams]);
+
+    useEffect(() => {
+        if (activeTab === 'users' && (currentUser?.is_staff || currentUser?.is_superuser)) {
+            fetchUsers();
+        }
+    }, [activeTab, currentUser]);
+
+    const fetchCurrentUser = async () => {
+        try {
+            const response = await api.get('/auth/me/');
+            setCurrentUser(response.data);
+        } catch (error) {
+            console.error('Failed to fetch current user', error);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const response = await api.get('/auth/users/');
+            setUsers(response.data);
+        } catch (error) {
+            console.error('Failed to fetch users', error);
+        }
+    };
+
+    const handleSaveUser = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            if (editingUser) {
+                await api.put(`/auth/users/${editingUser.id}/`, userForm);
+                setStatus({ type: 'success', message: 'User updated successfully.' });
+            } else {
+                await api.post('/auth/users/', userForm);
+                setStatus({ type: 'success', message: 'User created successfully.' });
+            }
+            setShowUserModal(false);
+            fetchUsers();
+        } catch (error) {
+            console.error('Failed to save user', error);
+            setStatus({ type: 'error', message: 'Error saving user.' });
+        } finally {
+            setLoading(false);
+            setTimeout(() => setStatus(null), 3000);
+        }
+    };
+
+    const handleDeleteUser = async (userId) => {
+        if (!window.confirm('Are you sure you want to delete this user?')) return;
+        try {
+            await api.delete(`/auth/users/${userId}/`);
+            setStatus({ type: 'success', message: 'User deleted successfully.' });
+            fetchUsers();
+        } catch (error) {
+            console.error('Failed to delete user', error);
+            setStatus({ type: 'error', message: 'Error deleting user.' });
+        } finally {
+            setTimeout(() => setStatus(null), 3000);
+        }
+    };
+
+    const openAddUser = () => {
+        setEditingUser(null);
+        setUserForm({
+            username: '',
+            email: '',
+            first_name: '',
+            last_name: '',
+            password: '',
+            is_staff: false,
+            is_superuser: false
+        });
+        setShowUserModal(true);
+    };
+
+    const openEditUser = (user) => {
+        setEditingUser(user);
+        setUserForm({
+            username: user.username,
+            email: user.email,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            password: '', // Leave blank to keep current
+            is_staff: user.is_staff,
+            is_superuser: user.is_superuser
+        });
+        setShowUserModal(true);
+    };
 
     const checkConnection = async () => {
         try {
@@ -91,6 +193,10 @@ const SettingsPage = () => {
         { id: 'general', name: 'General', icon: SettingsIcon },
         { id: 'security', name: 'Security', icon: Shield },
     ];
+
+    if (currentUser?.is_staff || currentUser?.is_superuser) {
+        tabs.push({ id: 'users', name: 'Users', icon: Users });
+    }
 
     return (
         <div className="max-w-4xl mx-auto py-8 px-4">
@@ -253,6 +359,81 @@ const SettingsPage = () => {
                         </div>
                     )}
 
+                    {activeTab === 'users' && (currentUser?.is_staff || currentUser?.is_superuser) && (
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900">User Management</h2>
+                                    <p className="text-sm text-gray-500">Manage application users and their roles.</p>
+                                </div>
+                                <button
+                                    onClick={openAddUser}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all flex items-center"
+                                >
+                                    <Users size={16} className="mr-2" />
+                                    Add User
+                                </button>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {users.map((user) => (
+                                            <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                                            {user.first_name?.[0] || user.username[0].toUpperCase()}
+                                                        </div>
+                                                        <div className="ml-4">
+                                                            <div className="text-sm font-medium text-gray-900">{user.first_name} {user.last_name}</div>
+                                                            <div className="text-xs text-gray-500">{user.username} • {user.email}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {user.is_superuser && (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 uppercase">SuperAdmin</span>
+                                                        )}
+                                                        {user.is_staff && (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 uppercase">Admin</span>
+                                                        )}
+                                                        {!user.is_staff && !user.is_superuser && (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-700 uppercase">User</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <button
+                                                        onClick={() => openEditUser(user)}
+                                                        className="text-indigo-600 hover:text-indigo-900 mr-4"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteUser(user.id)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                        disabled={user.id === currentUser.id}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
                     {(activeTab === 'general' || activeTab === 'security') && (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                             <div className="p-4 bg-gray-50 rounded-full mb-4">
@@ -266,6 +447,114 @@ const SettingsPage = () => {
                     )}
                 </div>
             </div>
+
+            {/* User Modal */}
+            {showUserModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
+                        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h2 className="text-xl font-bold text-gray-800">
+                                {editingUser ? 'Edit User' : 'Add New User'}
+                            </h2>
+                            <button onClick={() => setShowUserModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <AlertCircle size={24} className="rotate-45" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveUser} className="p-8 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Username</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={userForm.username}
+                                        onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={userForm.email}
+                                        onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">First Name</label>
+                                    <input
+                                        type="text"
+                                        value={userForm.first_name}
+                                        onChange={(e) => setUserForm({ ...userForm, first_name: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Last Name</label>
+                                    <input
+                                        type="text"
+                                        value={userForm.last_name}
+                                        onChange={(e) => setUserForm({ ...userForm, last_name: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                                    {editingUser ? 'New Password (leave blank to keep current)' : 'Password'}
+                                </label>
+                                <input
+                                    type="password"
+                                    required={!editingUser}
+                                    value={userForm.password}
+                                    onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                            </div>
+                            <div className="flex space-x-6 pt-2">
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={userForm.is_staff}
+                                        onChange={(e) => setUserForm({ ...userForm, is_staff: e.target.checked })}
+                                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Admin (Staff)</span>
+                                </label>
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={userForm.is_superuser}
+                                        onChange={(e) => setUserForm({ ...userForm, is_superuser: e.target.checked })}
+                                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-sm text-gray-700">SuperAdmin</span>
+                                </label>
+                            </div>
+                            <div className="pt-6 flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowUserModal(false)}
+                                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-md disabled:opacity-50"
+                                >
+                                    {loading ? 'Saving...' : 'Save User'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
