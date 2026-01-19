@@ -26,6 +26,8 @@ services:
       - POSTGRES_USER=crm_user
       - POSTGRES_PASSWORD=crm_password
       - POSTGRES_HOST=db
+    env_file:
+      - ./backend/.env
     networks:
       - crm-network
 
@@ -40,6 +42,8 @@ services:
       - backend
     environment:
       - CHOKIDAR_USEPOLLING=true
+    env_file:
+      - ./backend/.env
     networks:
       - crm-network
 

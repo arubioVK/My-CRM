@@ -19,13 +19,18 @@ class GoogleService:
     def _get_credentials(self):
         try:
             token_obj = GoogleToken.objects.get(user=self.user)
+            # Convert aware datetime to naive UTC for google-auth library
+            expiry = token_obj.expires_at
+            if expiry and expiry.tzinfo:
+                expiry = expiry.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+
             creds = Credentials(
                 token=token_obj.access_token,
                 refresh_token=token_obj.refresh_token,
                 token_uri="https://oauth2.googleapis.com/token",
                 client_id=settings.GOOGLE_CLIENT_ID,
                 client_secret=settings.GOOGLE_CLIENT_SECRET,
-                expiry=token_obj.expires_at
+                expiry=expiry
             )
             
             if creds.expired and creds.refresh_token:
