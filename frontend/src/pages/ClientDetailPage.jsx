@@ -26,6 +26,8 @@ const ClientDetailPage = () => {
     const [sendingEmail, setSendingEmail] = useState(false);
     const [templates, setTemplates] = useState([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const [selectedEmail, setSelectedEmail] = useState(null);
+    const [showViewEmailModal, setShowViewEmailModal] = useState(false);
     const lastFetchedIdRef = React.useRef(null);
 
     useEffect(() => {
@@ -36,6 +38,7 @@ const ClientDetailPage = () => {
         fetchNotes();
         fetchEmails();
         fetchTemplates();
+        handleSyncEmails(true); // Auto-sync silently on mount
     }, [id]);
 
     const fetchTasks = async () => {
@@ -103,7 +106,7 @@ const ClientDetailPage = () => {
         }
     };
 
-    const handleSyncEmails = async () => {
+    const handleSyncEmails = async (silent = false) => {
         setSyncingEmails(true);
         try {
             await api.post('/crm/emails/sync/');
@@ -111,7 +114,9 @@ const ClientDetailPage = () => {
             setSyncingEmails(false);
         } catch (error) {
             console.error('Error syncing emails:', error);
-            alert('Error syncing emails. Please make sure your Google account is connected in Settings.');
+            if (!silent) {
+                alert('Error syncing emails. Please make sure your Google account is connected in Settings.');
+            }
             setSyncingEmails(false);
         }
     };
@@ -193,6 +198,17 @@ const ClientDetailPage = () => {
             alert('Error sending email. Please make sure your Google account is connected.');
             setSendingEmail(false);
         }
+    };
+
+    const stripHtml = (html) => {
+        if (!html) return '';
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.body.textContent || "";
+    };
+
+    const handleViewEmail = (email) => {
+        setSelectedEmail(email);
+        setShowViewEmailModal(true);
     };
 
     const fetchClient = async () => {
@@ -311,7 +327,8 @@ const ClientDetailPage = () => {
                                     {emails.map(email => (
                                         <div
                                             key={email.id}
-                                            className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-200 transition-all group"
+                                            onClick={() => handleViewEmail(email)}
+                                            className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-200 hover:bg-white cursor-pointer transition-all group"
                                         >
                                             <div className="flex justify-between items-start mb-1">
                                                 <h4 className="text-[11px] font-bold text-gray-900 line-clamp-1 group-hover:text-indigo-600 transition-colors">
@@ -319,7 +336,7 @@ const ClientDetailPage = () => {
                                                 </h4>
                                             </div>
                                             <p className="text-[10px] text-gray-500 line-clamp-2 italic">
-                                                {email.body ? email.body.substring(0, 100) : 'No content available.'}
+                                                {email.body ? stripHtml(email.body).substring(0, 100) : 'No content available.'}
                                             </p>
                                             <div className="mt-2 flex justify-between items-center text-[9px] text-gray-400">
                                                 <span className="truncate max-w-[100px]">
@@ -725,6 +742,38 @@ const ClientDetailPage = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* View Email Modal */}
+            {showViewEmailModal && selectedEmail && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800">{selectedEmail.subject || '(No Subject)'}</h3>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {selectedEmail.from_email === 'me' ? 'Sent' : 'From: ' + selectedEmail.from_email} • {new Date(selectedEmail.timestamp).toLocaleString()}
+                                </p>
+                            </div>
+                            <button onClick={() => setShowViewEmailModal(false)} className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-8 overflow-y-auto flex-1 bg-white prose prose-sm max-w-none">
+                            <div
+                                dangerouslySetInnerHTML={{ __html: selectedEmail.body || '<p class="italic text-gray-400">No content available.</p>' }}
+                                className="email-content-wrapper"
+                            />
+                        </div>
+                        <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50">
+                            <button
+                                onClick={() => setShowViewEmailModal(false)}
+                                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
