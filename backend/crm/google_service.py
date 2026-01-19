@@ -114,7 +114,7 @@ class GoogleService:
         
         return synced_emails
 
-    def send_email(self, to_email, subject, body, attachments=None):
+    def send_email(self, to_email, subject, body, attachments=None, thread_id=None, in_reply_to=None):
         if not self.credentials:
             return None
 
@@ -131,6 +131,9 @@ class GoogleService:
             message = MIMEMultipart()
             message['to'] = to_email
             message['subject'] = subject
+            if in_reply_to:
+                message['In-Reply-To'] = in_reply_to
+                message['References'] = in_reply_to
             message.attach(MIMEText(body, 'html'))
 
             for attachment in attachments:
@@ -148,11 +151,18 @@ class GoogleService:
             message = MIMEText(body, 'html')
             message['to'] = to_email
             message['subject'] = subject
+            if in_reply_to:
+                message['In-Reply-To'] = in_reply_to
+                message['References'] = in_reply_to
         
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
         
+        body_data = {'raw': raw}
+        if thread_id:
+            body_data['threadId'] = thread_id
+        
         try:
-            sent_message = service.users().messages().send(userId='me', body={'raw': raw}).execute()
+            sent_message = service.users().messages().send(userId='me', body=body_data).execute()
             return sent_message
         except Exception as e:
             print(f"An error occurred: {e}")

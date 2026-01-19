@@ -22,7 +22,14 @@ const ClientDetailPage = () => {
     const [loadingEmails, setLoadingEmails] = useState(true);
     const [syncingEmails, setSyncingEmails] = useState(false);
     const [showEmailModal, setShowEmailModal] = useState(false);
-    const [emailForm, setEmailForm] = useState({ subject: '', body: '', attachments: [], includeSignature: true });
+    const [emailForm, setEmailForm] = useState({
+        subject: '',
+        body: '',
+        attachments: [],
+        includeSignature: true,
+        thread_id: null,
+        in_reply_to: null
+    });
     const [sendingEmail, setSendingEmail] = useState(false);
     const [templates, setTemplates] = useState([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -179,6 +186,8 @@ const ClientDetailPage = () => {
             formData.append('body', emailForm.body);
             formData.append('client_id', id);
             formData.append('include_signature', emailForm.includeSignature);
+            if (emailForm.thread_id) formData.append('thread_id', emailForm.thread_id);
+            if (emailForm.in_reply_to) formData.append('in_reply_to', emailForm.in_reply_to);
 
             emailForm.attachments.forEach(file => {
                 formData.append('attachments', file);
@@ -191,7 +200,7 @@ const ClientDetailPage = () => {
             });
             setEmails(prev => [response.data, ...prev]);
             setShowEmailModal(false);
-            setEmailForm({ subject: '', body: '', attachments: [], includeSignature: true });
+            setEmailForm({ subject: '', body: '', attachments: [], includeSignature: true, thread_id: null, in_reply_to: null });
             setSendingEmail(false);
         } catch (error) {
             console.error('Error sending email:', error);
@@ -209,6 +218,26 @@ const ClientDetailPage = () => {
     const handleViewEmail = (email) => {
         setSelectedEmail(email);
         setShowViewEmailModal(true);
+    };
+
+    const handleReply = (email) => {
+        const replySubject = email.subject.toLowerCase().startsWith('re:')
+            ? email.subject
+            : `Re: ${email.subject}`;
+
+        // Simple quoting: wrap original body in a blockquote-like structure
+        const quotedBody = `<br><br>On ${new Date(email.timestamp).toLocaleString()}, ${email.from_email} wrote:<br><blockquote>${email.body}</blockquote>`;
+
+        setEmailForm({
+            subject: replySubject,
+            body: quotedBody,
+            attachments: [],
+            includeSignature: true,
+            thread_id: email.thread_id,
+            in_reply_to: email.message_id
+        });
+        setShowViewEmailModal(false);
+        setShowEmailModal(true);
     };
 
     const fetchClient = async () => {
@@ -747,29 +776,107 @@ const ClientDetailPage = () => {
             )}
             {/* View Email Modal */}
             {showViewEmailModal && selectedEmail && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-800">{selectedEmail.subject || '(No Subject)'}</h3>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    {selectedEmail.from_email === 'me' ? 'Sent' : 'From: ' + selectedEmail.from_email} • {new Date(selectedEmail.timestamp).toLocaleString()}
-                                </p>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-200">
+                        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-start bg-gray-50/50">
+                            <div className="space-y-1">
+                                <div className="flex items-center space-x-2">
+                                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase rounded">Subject</span>
+                                    <h3 className="text-xl font-extrabold text-gray-900">{selectedEmail.subject || '(No Subject)'}</h3>
+                                </div>
+                                <div className="flex items-center space-x-4 mt-2">
+                                    <div className="flex items-center text-sm text-gray-600">
+                                        <User size={14} className="mr-1.5 text-gray-400" />
+                                        <span className="font-medium">{selectedEmail.from_email === 'me' ? 'You' : selectedEmail.from_email}</span>
+                                    </div>
+                                    <div className="flex items-center text-sm text-gray-400">
+                                        <RefreshCw size={14} className="mr-1.5" />
+                                        <span>{new Date(selectedEmail.timestamp).toLocaleString()}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <button onClick={() => setShowViewEmailModal(false)} className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="p-8 overflow-y-auto flex-1 bg-white prose prose-sm max-w-none">
-                            <div
-                                dangerouslySetInnerHTML={{ __html: selectedEmail.body || '<p class="italic text-gray-400">No content available.</p>' }}
-                                className="email-content-wrapper"
-                            />
-                        </div>
-                        <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50">
                             <button
                                 onClick={() => setShowViewEmailModal(false)}
-                                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
+                                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-all"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-10 overflow-y-auto flex-1 bg-white">
+                            <div className="max-w-3xl mx-auto">
+                                <style dangerouslySetInnerHTML={{
+                                    __html: `
+                                    .email-content-wrapper {
+                                        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+                                        line-height: 1.7;
+                                        color: #374151;
+                                    }
+                                    /* Style for the latest message (everything before the first blockquote/thread) */
+                                    .email-content-wrapper > *:not(blockquote) {
+                                        margin-right: 12%;
+                                        margin-bottom: 1.5rem;
+                                    }
+                                    /* Style for the thread/replies */
+                                    .email-content-wrapper blockquote {
+                                        border-left: 3px solid #E5E7EB;
+                                        padding-left: 2rem;
+                                        margin-left: 0;
+                                        margin-top: 4rem;
+                                        margin-bottom: 2rem;
+                                        color: #6B7280;
+                                        font-style: normal;
+                                        position: relative;
+                                    }
+                                    /* Add a visual separator/label for the thread */
+                                    .email-content-wrapper > blockquote::before {
+                                        content: 'Previous messages in this thread';
+                                        display: block;
+                                        font-size: 11px;
+                                        font-weight: 700;
+                                        text-transform: uppercase;
+                                        color: #9CA3AF;
+                                        margin-bottom: 2rem;
+                                        letter-spacing: 0.1em;
+                                        border-bottom: 1px solid #F3F4F6;
+                                        padding-bottom: 0.5rem;
+                                    }
+                                    .email-content-wrapper p {
+                                        margin-bottom: 1.25rem;
+                                    }
+                                    .email-content-wrapper a {
+                                        color: #4F46E5;
+                                        text-decoration: underline;
+                                    }
+                                    .email-content-wrapper img {
+                                        max-width: 100%;
+                                        height: auto;
+                                        border-radius: 0.5rem;
+                                    }
+                                    .email-content-wrapper hr {
+                                        border: 0;
+                                        border-top: 1px solid #F3F4F6;
+                                        margin: 2rem 0;
+                                    }
+                                `}} />
+                                <div
+                                    dangerouslySetInnerHTML={{ __html: selectedEmail.body || '<p class="italic text-gray-400 text-center py-12">No content available.</p>' }}
+                                    className="email-content-wrapper prose prose-indigo max-w-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="px-8 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+                            <button
+                                onClick={() => handleReply(selectedEmail)}
+                                className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md flex items-center"
+                            >
+                                <RefreshCw size={16} className="mr-2" />
+                                Reply
+                            </button>
+                            <button
+                                onClick={() => setShowViewEmailModal(false)}
+                                className="px-8 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm"
                             >
                                 Close
                             </button>

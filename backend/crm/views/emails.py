@@ -30,6 +30,8 @@ class EmailViewSet(viewsets.ReadOnlyModelViewSet):
         to_email = request.data.get('to_email')
         subject = request.data.get('subject')
         body = request.data.get('body')
+        thread_id = request.data.get('thread_id')
+        in_reply_to = request.data.get('in_reply_to')
         client_id = request.data.get('client_id')
         include_signature = request.data.get('include_signature', False)
         attachments = request.FILES.getlist('attachments')
@@ -46,7 +48,14 @@ class EmailViewSet(viewsets.ReadOnlyModelViewSet):
                 final_body = f"{body}<br><br>{config.email_signature}"
 
         service = GoogleService(request.user)
-        sent_message = service.send_email(to_email, subject, final_body, attachments=attachments)
+        sent_message = service.send_email(
+            to_email, 
+            subject, 
+            final_body, 
+            attachments=attachments,
+            thread_id=thread_id,
+            in_reply_to=in_reply_to
+        )
 
         if sent_message:
             # Create Email record in DB
