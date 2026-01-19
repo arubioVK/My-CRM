@@ -67,7 +67,14 @@ class TaskViewSet(viewsets.ModelViewSet):
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        order_string = f"{'-' if sort_direction == 'desc' else ''}{sort_field}"
+        # Map frontend field names to backend model paths
+        sort_mapping = {
+            'client_name': 'client__name',
+            'assigned_to_name': 'assigned_to__username',
+        }
+        mapped_sort_field = sort_mapping.get(sort_field, sort_field)
+
+        order_string = f"{'-' if sort_direction == 'desc' else ''}{mapped_sort_field}"
         queryset = queryset.order_by(order_string)
             
         return queryset
