@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import FilterBuilder from '../components/CRM/FilterBuilder';
 import ExportButton from '../components/CRM/ExportButton';
-import { Filter, X, ChevronLeft, ChevronRight, GripVertical, ArrowUp, ArrowDown, Settings } from 'lucide-react';
+import { Filter, X, ChevronLeft, ChevronRight, GripVertical, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const ALL_COLUMNS = [
@@ -29,6 +29,7 @@ const ClientsPage = () => {
     const [sorting, setSorting] = useState({ field: 'name', direction: 'asc' });
     const [showColumnConfig, setShowColumnConfig] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -49,7 +50,7 @@ const ClientsPage = () => {
         const controller = new AbortController();
         fetchClients(controller.signal);
         return () => controller.abort();
-    }, [currentViewId, activeFilters, sorting, currentPage, pageSize, refreshTrigger]);
+    }, [currentViewId, activeFilters, sorting, currentPage, pageSize, refreshTrigger, searchTerm]);
 
     const handleSelectView = (viewId, viewsList = views) => {
         const view = viewsList.find(v => v.id === viewId);
@@ -86,7 +87,8 @@ const ClientsPage = () => {
         const params = {
             sort: JSON.stringify(sorting),
             page: currentPage,
-            page_size: pageSize
+            page_size: pageSize,
+            search: searchTerm
         };
 
         if (activeFilters) {
@@ -279,38 +281,11 @@ const ClientsPage = () => {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
+            <div className="mb-2">
                 <h1 className="text-2xl font-bold text-gray-800">Clients</h1>
-
-                <div className="flex items-center space-x-3">
-                    <ExportButton
-                        endpoint="/crm/clients/"
-                        filters={activeFilters || views.find(v => v.id === currentViewId)?.filters}
-                        sort={sorting}
-                        columns={columnOrder}
-                        filename="clients_export"
-                    />
-                    <button
-                        onClick={() => setShowFilterBuilder(!showFilterBuilder)}
-                        className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${showFilterBuilder || activeFilters
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-                            }`}
-                    >
-                        <Filter size={16} className="mr-2" />
-                        {activeFilters ? 'Filters Applied' : 'Filter'}
-                    </button>
-                    <button
-                        onClick={() => setShowColumnConfig(!showColumnConfig)}
-                        className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${showColumnConfig
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-                            }`}
-                    >
-                        <Settings size={16} className="mr-2" />
-                        Columns
-                    </button>
-                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                    Showing <span className="font-semibold text-gray-900">{clients.length}</span> of <span className="font-semibold text-gray-900">{totalItems}</span> clients
+                </p>
             </div>
 
             {/* View Tabs */}
@@ -386,29 +361,57 @@ const ClientsPage = () => {
             </DragDropContext>
 
             <div className="mb-6 flex justify-between items-center">
-                <p className="text-sm text-gray-500">
-                    Showing <span className="font-semibold text-gray-900">{clients.length}</span> of <span className="font-semibold text-gray-900">{totalItems}</span> clients
-                </p>
+                <div className="relative w-64">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search size={16} className="text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                        placeholder="Search by name or email..."
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                    />
+                    {searchTerm && (
+                        <button
+                            onClick={() => setSearchTerm('')}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        >
+                            <X size={14} className="text-gray-400 hover:text-gray-600" />
+                        </button>
+                    )}
+                </div>
 
-                {/* Pagination Controls */}
-                <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500 mr-2">
-                        Page {currentPage} of {totalPages}
-                    </span>
+                <div className="flex items-center space-x-3">
+                    <ExportButton
+                        endpoint="/crm/clients/"
+                        filters={activeFilters || views.find(v => v.id === currentViewId)?.filters}
+                        sort={sorting}
+                        columns={columnOrder}
+                        filename="clients_export"
+                    />
                     <button
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
-                        className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
+                        onClick={() => setShowFilterBuilder(!showFilterBuilder)}
+                        className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${showFilterBuilder || activeFilters
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                            }`}
                     >
-                        <ChevronLeft size={20} />
+                        <Filter size={16} className="mr-2" />
+                        {activeFilters ? 'Filters Applied' : 'Filter'}
                     </button>
-
                     <button
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage === totalPages}
-                        className={`p-2 rounded-md ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
+                        onClick={() => setShowColumnConfig(!showColumnConfig)}
+                        className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${showColumnConfig
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                            }`}
                     >
-                        <ChevronRight size={20} />
+                        <Settings size={16} className="mr-2" />
+                        Columns
                     </button>
                 </div>
             </div>
@@ -552,6 +555,31 @@ const ClientsPage = () => {
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="mt-6 flex justify-center items-center">
+                <div className="flex items-center space-x-4 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+                    <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className={`p-2 rounded-md transition-colors ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+
+                    <span className="text-sm font-medium text-gray-700">
+                        Page <span className="text-indigo-600">{currentPage}</span> of {totalPages}
+                    </span>
+
+                    <button
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className={`p-2 rounded-md transition-colors ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                        <ChevronRight size={20} />
+                    </button>
+                </div>
             </div>
         </div>
     );

@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
+from django.db.models import Q
 from django.http import HttpResponse
 import json
 import pandas as pd
@@ -39,6 +40,11 @@ class TaskViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(q_obj)
             except (json.JSONDecodeError, TypeError):
                 pass
+
+        # 3. Handle Search
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            queryset = queryset.filter(Q(title__icontains=search_query))
 
         # 3. Handle Client ID filtering
         client_id = self.request.query_params.get('client_id', None)

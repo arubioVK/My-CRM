@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import api from '../api';
-import { Settings as SettingsIcon, Mail, Globe, Shield, CheckCircle2, AlertCircle, ExternalLink, Save, Users } from 'lucide-react';
+import { Settings as SettingsIcon, Mail, Globe, Shield, CheckCircle2, AlertCircle, ExternalLink, Save, Users, LogOut } from 'lucide-react';
 
 const SettingsPage = () => {
     const [searchParams] = useSearchParams();
@@ -187,6 +187,24 @@ const SettingsPage = () => {
         }
     };
 
+    const handleDisconnectGoogle = async () => {
+        if (!window.confirm('Are you sure you want to disconnect your Google account? You will no longer be able to send or receive emails through the CRM.')) {
+            return;
+        }
+        setLoading(true);
+        try {
+            await api.post('/crm/google/auth/disconnect/');
+            setIsGoogleConnected(false);
+            setStatus({ type: 'success', message: 'Successfully disconnected Google account.' });
+        } catch (error) {
+            console.error('Failed to disconnect Google account', error);
+            setStatus({ type: 'error', message: 'Failed to disconnect Google account.' });
+        } finally {
+            setLoading(false);
+            setTimeout(() => setStatus(null), 3000);
+        }
+    };
+
     const tabs = [
         { id: 'email', name: 'Email', icon: Mail },
         { id: 'integrations', name: 'Integrations', icon: Globe },
@@ -266,10 +284,12 @@ const SettingsPage = () => {
                                     <div>
                                         {isGoogleConnected ? (
                                             <button
-                                                disabled
-                                                className="px-4 py-2 text-sm font-medium text-gray-400 bg-white border border-gray-200 rounded-lg cursor-not-allowed"
+                                                onClick={handleDisconnectGoogle}
+                                                disabled={loading}
+                                                className="flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-50"
                                             >
-                                                Connected
+                                                {loading ? 'Disconnecting...' : 'Disconnect'}
+                                                {!loading && <LogOut size={14} className="ml-2" />}
                                             </button>
                                         ) : (
                                             <button

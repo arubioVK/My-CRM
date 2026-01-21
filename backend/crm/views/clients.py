@@ -43,6 +43,14 @@ class ClientViewSet(viewsets.ModelViewSet):
             except (json.JSONDecodeError, TypeError):
                 pass
 
+        # 3. Handle Search
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) | 
+                Q(email__icontains=search_query)
+            )
+
         # 3. Legacy view_mode (for "My Clients")
         view_mode = self.request.query_params.get('view', None)
         if view_mode == 'my' and self.request.user.is_authenticated:

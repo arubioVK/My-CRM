@@ -18,6 +18,11 @@ class GoogleAuthView(viewsets.ViewSet):
         has_token = GoogleToken.objects.filter(user=request.user).exists()
         return Response({"connected": has_token})
 
+    @action(detail=False, methods=['POST'])
+    def disconnect(self, request):
+        GoogleToken.objects.filter(user=request.user).delete()
+        return Response({"status": "success"})
+
 class GoogleCallbackView(viewsets.ViewSet):
     def list(self, request):
         code = request.query_params.get('code')
