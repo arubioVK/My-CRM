@@ -35,6 +35,18 @@ const ClientDetailPage = () => {
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [selectedEmail, setSelectedEmail] = useState(null);
     const [showViewEmailModal, setShowViewEmailModal] = useState(false);
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [taskForm, setTaskForm] = useState({
+        title: '',
+        description: '',
+        status: 'todo',
+        priority: 'medium',
+        due_date: '',
+        assigned_to: ''
+    });
+    const [users, setUsers] = useState([]);
+    const [loadingUsers, setLoadingUsers] = useState(false);
+    const [creatingTask, setCreatingTask] = useState(false);
     const lastFetchedIdRef = React.useRef(null);
 
     useEffect(() => {
@@ -45,6 +57,7 @@ const ClientDetailPage = () => {
         fetchNotes();
         fetchEmails();
         fetchTemplates();
+        fetchUsers();
         handleSyncEmails(true); // Auto-sync silently on mount
     }, [id]);
 
@@ -57,6 +70,48 @@ const ClientDetailPage = () => {
         } catch (error) {
             console.error('Error fetching tasks:', error);
             setLoadingTasks(false);
+        }
+    };
+
+    const fetchUsers = async () => {
+        setLoadingUsers(true);
+        try {
+            const response = await api.get('/auth/users/');
+            setUsers(response.data.results || response.data);
+            setLoadingUsers(false);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            setLoadingUsers(false);
+        }
+    };
+
+    const handleCreateTask = async (e) => {
+        e.preventDefault();
+        setCreatingTask(true);
+        try {
+            const payload = {
+                ...taskForm,
+                client: id
+            };
+            // If assigned_to is empty string, set it to null
+            if (!payload.assigned_to) payload.assigned_to = null;
+
+            const response = await api.post('/crm/tasks/', payload);
+            setTasks(prev => [response.data, ...prev]);
+            setShowTaskModal(false);
+            setTaskForm({
+                title: '',
+                description: '',
+                status: 'todo',
+                priority: 'medium',
+                due_date: '',
+                assigned_to: ''
+            });
+            setCreatingTask(false);
+        } catch (error) {
+            console.error('Error creating task:', error);
+            alert('Error creating task');
+            setCreatingTask(false);
         }
     };
 
@@ -509,7 +564,7 @@ const ClientDetailPage = () => {
                                 </button>
                                 <button
                                     className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800"
-                                    onClick={() => navigate('/tasks')}
+                                    onClick={() => setShowTaskModal(true)}
                                 >
                                     <Plus size={16} className="mr-1" /> Add Task
                                 </button>
@@ -881,6 +936,113 @@ const ClientDetailPage = () => {
                                 Close
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Add Task Modal */}
+            {showTaskModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-200">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-lg font-bold text-gray-800">Add New Task for {client.name}</h3>
+                            <button onClick={() => setShowTaskModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateTask} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Title</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={taskForm.title}
+                                    onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    placeholder="Enter task title..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Description</label>
+                                <textarea
+                                    value={taskForm.description}
+                                    onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                                    rows="3"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                                    placeholder="Enter task description..."
+                                ></textarea>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Status</label>
+                                    <select
+                                        value={taskForm.status}
+                                        onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                                    >
+                                        <option value="todo">To Do</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="done">Done</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Priority</label>
+                                    <select
+                                        value={taskForm.priority}
+                                        onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                                    >
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Due Date</label>
+                                    <input
+                                        type="date"
+                                        value={taskForm.due_date}
+                                        onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Assigned To</label>
+                                    <select
+                                        value={taskForm.assigned_to}
+                                        onChange={(e) => setTaskForm({ ...taskForm, assigned_to: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                                    >
+                                        <option value="">Unassigned</option>
+                                        {users.map(user => (
+                                            <option key={user.id} value={user.id}>{user.username}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTaskModal(false)}
+                                    className="px-6 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={creatingTask}
+                                    className="flex items-center px-8 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                >
+                                    {creatingTask ? (
+                                        <RefreshCw size={16} className="mr-2 animate-spin" />
+                                    ) : (
+                                        <Plus size={16} className="mr-2" />
+                                    )}
+                                    {creatingTask ? 'Creating...' : 'Create Task'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
