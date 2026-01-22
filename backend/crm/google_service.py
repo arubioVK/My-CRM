@@ -57,7 +57,11 @@ class GoogleService:
             scopes=SCOPES,
             redirect_uri=settings.GOOGLE_REDIRECT_URI
         )
-        authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true',
+            prompt='consent'
+        )
         return authorization_url, state
 
     def fetch_emails(self):

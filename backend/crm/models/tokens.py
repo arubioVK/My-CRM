@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 class GoogleToken(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='google_token')
     access_token = models.TextField()
-    refresh_token = models.TextField()
+    refresh_token = models.TextField(null=True, blank=True)
     expires_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

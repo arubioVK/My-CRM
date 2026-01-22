@@ -44,13 +44,25 @@ class GoogleCallbackView(viewsets.ViewSet):
         flow.fetch_token(code=code)
         creds = flow.credentials
 
-        GoogleToken.objects.update_or_create(
-            user=request.user,
-            defaults={
-                "access_token": creds.token,
-                "refresh_token": creds.refresh_token,
-                "expires_at": creds.expiry
-            }
-        )
+        defaults = {
+            "access_token": creds.token,
+            "expires_at": creds.expiry
+        }
+
+        if creds.refresh_token:
+            defaults["refresh_token"] = creds.refresh_token
+
+        try:
+            # Try to get existing token to preserve refresh_token if missing in new creds
+            existing_token = GoogleToken.objects.filter(user=request.user).first()
+            if not creds.refresh_token and existing_token:
+                defaults["refresh_token"] = existing_token.refresh_token
+            
+            GoogleToken.objects.update_or_create(
+                user=request.user,
+                defaults=defaults
+            )
+        except Exception as e:
+            return Response({"error": f"Failed to save tokens: {str(e)}"}, status=500)
 
         return Response({"status": "success"})
