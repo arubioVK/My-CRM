@@ -20,7 +20,14 @@ class ClientViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
 
     def get_queryset(self):
+        user = self.request.user
         queryset = Client.objects.all()
+
+        # Apply visibility permissions for non-admins
+        if not user.is_superuser and not user.is_staff:
+            config = getattr(user, 'config', None)
+            if config and not config.see_all_clients:
+                queryset = queryset.filter(owner=user)
         
         # 1. Handle Saved View ID
         view_id = self.request.query_params.get('view_id', None)

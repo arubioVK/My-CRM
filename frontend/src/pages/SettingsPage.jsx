@@ -25,8 +25,13 @@ const SettingsPage = () => {
         last_name: '',
         password: '',
         is_staff: false,
-        is_superuser: false
+        is_superuser: false,
+        config: {
+            see_all_clients: true,
+            see_all_tasks: true
+        }
     });
+
 
     useEffect(() => {
         const code = searchParams.get('code');
@@ -107,7 +112,11 @@ const SettingsPage = () => {
             last_name: '',
             password: '',
             is_staff: false,
-            is_superuser: false
+            is_superuser: false,
+            config: {
+                see_all_clients: true,
+                see_all_tasks: true
+            }
         });
         setShowUserModal(true);
     };
@@ -121,7 +130,11 @@ const SettingsPage = () => {
             last_name: user.last_name,
             password: '', // Leave blank to keep current
             is_staff: user.is_staff,
-            is_superuser: user.is_superuser
+            is_superuser: user.is_superuser,
+            config: {
+                see_all_clients: user.config?.see_all_clients ?? true,
+                see_all_tasks: user.config?.see_all_tasks ?? true
+            }
         });
         setShowUserModal(true);
     };
@@ -148,11 +161,13 @@ const SettingsPage = () => {
     const handleSaveSignature = async () => {
         setSavingSignature(true);
         try {
-            await api.patch('/crm/config/', { email_signature: signature });
-            setStatus({ type: 'success', message: 'Signature saved successfully.' });
+            await api.patch('/crm/config/', {
+                email_signature: signature
+            });
+            setStatus({ type: 'success', message: 'Settings saved successfully.' });
         } catch (error) {
-            console.error('Failed to save signature', error);
-            setStatus({ type: 'error', message: 'Error saving signature.' });
+            console.error('Failed to save settings', error);
+            setStatus({ type: 'error', message: 'Error saving settings.' });
         } finally {
             setSavingSignature(false);
             setTimeout(() => setStatus(null), 3000);
@@ -454,7 +469,7 @@ const SettingsPage = () => {
                         </div>
                     )}
 
-                    {(activeTab === 'general' || activeTab === 'security') && (
+                    {activeTab === 'general' && (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                             <div className="p-4 bg-gray-50 rounded-full mb-4">
                                 <SettingsIcon size={48} className="text-gray-300" />
@@ -462,6 +477,18 @@ const SettingsPage = () => {
                             <h3 className="text-lg font-medium text-gray-900">Coming Soon</h3>
                             <p className="text-sm text-gray-500 max-w-xs mt-2">
                                 We are working to bring you more configuration options in this section.
+                            </p>
+                        </div>
+                    )}
+
+                    {activeTab === 'security' && (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="p-4 bg-gray-50 rounded-full mb-4">
+                                <Shield size={48} className="text-gray-300" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900">Coming Soon</h3>
+                            <p className="text-sm text-gray-500 max-w-xs mt-2">
+                                We are working to bring you more security options in this section.
                             </p>
                         </div>
                     )}
@@ -553,6 +580,32 @@ const SettingsPage = () => {
                                         className="rounded text-indigo-600 focus:ring-indigo-500"
                                     />
                                     <span className="text-sm text-gray-700">SuperAdmin</span>
+                                </label>
+                            </div>
+                            <div className="flex space-x-6 pt-2 pb-2 border-t border-gray-100 mt-2">
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={userForm.config.see_all_clients}
+                                        onChange={(e) => setUserForm({
+                                            ...userForm,
+                                            config: { ...userForm.config, see_all_clients: e.target.checked }
+                                        })}
+                                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Can See All Clients</span>
+                                </label>
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={userForm.config.see_all_tasks}
+                                        onChange={(e) => setUserForm({
+                                            ...userForm,
+                                            config: { ...userForm.config, see_all_tasks: e.target.checked }
+                                        })}
+                                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Can See All Tasks</span>
                                 </label>
                             </div>
                             <div className="pt-6 flex justify-end space-x-3">

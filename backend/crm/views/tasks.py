@@ -19,8 +19,15 @@ class TaskViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
+        user = self.request.user
         queryset = Task.objects.all()
-        
+
+        # Apply visibility permissions for non-admins
+        if not user.is_superuser and not user.is_staff:
+            config = getattr(user, 'config', None)
+            if config and not config.see_all_tasks:
+                queryset = queryset.filter(assigned_to=user)
+
         # 1. Handle Saved View ID
         view_id = self.request.query_params.get('view_id', None)
         if view_id:
