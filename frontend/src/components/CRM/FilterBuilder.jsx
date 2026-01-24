@@ -280,7 +280,7 @@ const FilterBuilder = ({
                                                     </span>
                                                     <ChevronDown size={14} className="ml-2 text-gray-400 group-open:rotate-180 transition-transform" />
                                                 </summary>
-                                                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg p-2 space-y-1 max-h-48 overflow-y-auto">
+                                                <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg p-2 space-y-1 max-h-64 overflow-y-auto">
                                                     <label className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
                                                         <input
                                                             type="checkbox"
@@ -329,7 +329,7 @@ const FilterBuilder = ({
                                                     </span>
                                                     <ChevronDown size={14} className="ml-2 text-gray-400 group-open:rotate-180 transition-transform" />
                                                 </summary>
-                                                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg p-2 space-y-1 max-h-48 overflow-y-auto">
+                                                <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg p-2 space-y-1 max-h-64 overflow-y-auto">
                                                     {fieldDef.options.map(opt => (
                                                         <label key={opt.value} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
                                                             <input
@@ -445,7 +445,7 @@ const FilterBuilder = ({
                     </button>
                 </div>
 
-                <div className="p-6">
+                <div className="p-6 pb-48">
                     {renderGroup(filterData, true)}
                 </div>
 
